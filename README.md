@@ -80,7 +80,7 @@ The suite covers deterministic ranking, mutation boundaries, stale-state rejecti
 
 ### Measured release audit
 
-Lighthouse 13 was run on the local production build with its default mobile throttling on August 25, 2026: Performance 88, Accessibility 100, Best Practices 96, SEO 100, LCP 3.4 s, CLS 0, and TBT 30 ms. Performance improved from 85 after removing webfont and landing hydration overhead. The mobile performance and LCP stretch targets remain visible rather than being replaced with desktop-only scores.
+Lighthouse 13 was run against the public production URL with its default mobile throttling on August 25, 2026: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction is attributable to three deprecated APIs in the hosting platform’s injected cdn-cgi challenge script; the app’s console-error audit passes and the same app build scores 96 for Best Practices locally. The pre-deployment local audit measured Performance 88, Accessibility 100, Best Practices 96, and SEO 100.
 
 ## Project map
 

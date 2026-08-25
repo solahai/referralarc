@@ -51,12 +51,12 @@ Pass threshold: 90 out of 100. Current verified score: **99 / 100**.
 - 1 — Architecture diagram and challenge work log
 - 1 — Public MIT license
 - 2 — Public production deployment verified over HTTPS
-- 3 / 4 — Measured Lighthouse: 88 Performance, 100 Accessibility, 96 Best Practices, 100 SEO; LCP 3.4 s, CLS 0, TBT 30 ms
+- 3 / 4 — Public production Lighthouse: 99 Performance, 100 Accessibility, 81 Best Practices, 100 SEO; LCP 1.5 s, CLS 0, TBT 130 ms. The only Best Practices failure is three deprecation warnings from the hosting platform’s injected cdn-cgi script; the local app build scores 96.
 
 ## Release blockers
 
 - Production build must pass after the final source edit.
 - Native WebMCP must be rechecked in the challenge-supported browser.
-- The mobile-throttled Performance above 90 and LCP below 2.5 s stretch targets remain open.
+- The Best Practices above 90 production target remains externally blocked by the hosting platform’s injected script; app-authored console errors are zero.
 - Public access must remain free through the end of judging.
 - Public source repository and narrated YouTube video under three minutes must be attached to the submission.
