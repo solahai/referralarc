@@ -2,6 +2,8 @@
 
 ReferralArc is a human-governed agentic workspace for administrative healthcare coordination. It demonstrates how a person and a browser agent can move one synthetic MRI referral from ready to confirmed without giving the agent unchecked authority.
 
+[Live site](https://referralarc.docsplainai.chatgpt.site) · [Golden demo](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
+
 ![ReferralArc workspace](docs/screenshots/desktop-1440x900.jpg)
 
 The browser-visible app and its WebMCP tools share one deterministic domain engine. An agent can find eligible options, compare logistics, save a plan, draft intake, and prepare an appointment. The consequential commit tool does not exist until a person approves the exact draft. Approval revocation, draft changes, expiry, reset, and successful commit remove it again.

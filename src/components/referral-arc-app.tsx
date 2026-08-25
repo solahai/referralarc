@@ -61,7 +61,7 @@ function useCareWorkspace() {
 
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
-    <Link className="brand" href="/" aria-label="ReferralArc home">
+    <Link className="brand" href="/">
       <span className="brand-mark" aria-hidden="true">R</span>
       <span><strong>ReferralArc</strong>{!compact && <small>Human-governed care coordination</small>}</span>
     </Link>

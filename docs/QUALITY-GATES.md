@@ -1,6 +1,6 @@
 # Quality gates
 
-Pass threshold: 90 out of 100. Current verified score before deployment: **97 / 100**.
+Pass threshold: 90 out of 100. Current verified score: **99 / 100**.
 
 ## Functional integrity — 30 / 30
 
@@ -43,21 +43,20 @@ Pass threshold: 90 out of 100. Current verified score before deployment: **97 / 
 - 2 — Shared status hierarchy and plain-language errors
 - 1 — Print-friendly care plan
 
-## Engineering evidence — 12 / 15
+## Engineering evidence — 14 / 15
 
 - 3 — Unit, contract, security, and end-to-end tests pass
 - 2 — Typecheck, lint, and production build pass
 - 2 — README, judge guide, demo script, and submission copy
 - 1 — Architecture diagram and challenge work log
 - 1 — Public MIT license
-- 0 / 2 — Production deployment pending
+- 2 — Public production deployment verified over HTTPS
 - 3 / 4 — Measured Lighthouse: 88 Performance, 100 Accessibility, 96 Best Practices, 100 SEO; LCP 3.4 s, CLS 0, TBT 30 ms
 
 ## Release blockers
 
 - Production build must pass after the final source edit.
 - Native WebMCP must be rechecked in the challenge-supported browser.
-- Deployment health must be green.
 - The mobile-throttled Performance above 90 and LCP below 2.5 s stretch targets remain open.
 - Public access must remain free through the end of judging.
 - Public source repository and narrated YouTube video under three minutes must be attached to the submission.

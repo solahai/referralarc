@@ -7,7 +7,7 @@ export default function Home() {
   return (
     <main className="landing" id="top">
       <header className="landing-nav">
-        <a className="brand" href="#top" aria-label="ReferralArc home">
+        <a className="brand" href="#top">
           <span className="brand-mark" aria-hidden="true">R</span>
           <span><strong>ReferralArc</strong><small>Human-governed care coordination</small></span>
         </a>
@@ -48,7 +48,7 @@ export default function Home() {
             <div className="preview-main">
               <small>Best administrative match</small>
               <h2>Northline Imaging Studio</h2>
-              <p>Tue, Aug 27 · 4:10 PM</p>
+              <p>Thu, Aug 27 · 4:10 PM</p>
               <div><span>$62 estimated</span><span>22 min</span><span>Accessible</span></div>
               <button type="button">Prepared for review</button>
             </div>
