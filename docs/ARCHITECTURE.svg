@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">ReferralArc architecture</title>
+  <desc id="desc">Human interface and browser agent converge on one deterministic domain engine. Exact approval dynamically exposes the booking commit tool. Synthetic data and audit receipts support the engine.</desc>
+  <defs>
+    <style>
+      .bg{fill:#f6f8fb}.card{fill:#fff;stroke:#cfd7e3;stroke-width:2}.navy{fill:#10233f}.blue{fill:#165dff}.blueSoft{fill:#eaf1ff}.green{fill:#e6f5ef;stroke:#17805c}.amber{fill:#fff5dc;stroke:#b47700}.muted{fill:#53647a}.white{fill:#fff}.line{stroke:#7f91aa;stroke-width:4;fill:none;marker-end:url(#arrow)}.dash{stroke:#b47700;stroke-width:4;stroke-dasharray:10 9;fill:none;marker-end:url(#arrowAmber)}text{font-family:Inter,system-ui,sans-serif}.h1{font-size:42px;font-weight:750}.h2{font-size:25px;font-weight:750}.body{font-size:19px}.small{font-size:16px}.mono{font-family:ui-monospace,SFMono-Regular,monospace;font-size:16px}
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0L12 6L0 12z" fill="#7f91aa"/></marker>
+    <marker id="arrowAmber" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto"><path d="M0 0L12 6L0 12z" fill="#b47700"/></marker>
+  </defs>
+  <rect class="bg" width="1600" height="900"/>
+  <text class="h1 navy" x="90" y="80">ReferralArc: one state, two collaborators, one human authority boundary</text>
+  <text class="body muted" x="92" y="118">Native WebMCP is progressive enhancement. Human controls remain complete.</text>
+
+  <rect class="card" x="90" y="190" width="330" height="210" rx="24"/>
+  <circle class="blueSoft" cx="160" cy="258" r="36"/>
+  <text class="h2 navy" x="214" y="254">Person</text>
+  <text class="body muted" x="214" y="286">Visual workspace</text>
+  <text class="body navy" x="125" y="340">Review • approve • reject</text>
+  <text class="small muted" x="125" y="372">Complete keyboard-accessible fallback</text>
+
+  <rect class="card" x="90" y="500" width="330" height="210" rx="24"/>
+  <circle class="blue" cx="160" cy="568" r="36"/>
+  <text class="h2 navy" x="214" y="564">Browser agent</text>
+  <text class="body muted" x="214" y="596">Native page tools</text>
+  <text class="body navy" x="125" y="650">Discover • compose • report</text>
+  <text class="small muted" x="125" y="682">Closed schemas + runtime validation</text>
+
+  <path class="line" d="M420 295H610"/>
+  <path class="line" d="M420 605H610"/>
+
+  <rect class="card" x="610" y="180" width="430" height="540" rx="28"/>
+  <rect class="navy" x="610" y="180" width="430" height="92" rx="28"/>
+  <path class="navy" d="M610 240H1040V272H610z"/>
+  <text class="h2 white" x="654" y="238">Shared deterministic engine</text>
+  <text class="body navy" x="654" y="324">Reads</text>
+  <text class="mono muted" x="654" y="358">case • options • slots • coverage</text>
+  <text class="body navy" x="654" y="412">Reversible writes</text>
+  <text class="mono muted" x="654" y="446">save • intake • prepare</text>
+  <rect class="amber" x="650" y="490" width="350" height="104" rx="18"/>
+  <text class="h2 navy" x="678" y="532">Exact approval gate</text>
+  <text class="small muted" x="678" y="562">draft ID + version + expiry</text>
+  <rect class="green" x="650" y="620" width="350" height="62" rx="16"/>
+  <text class="mono navy" x="714" y="659">commit_booking</text>
+
+  <path class="dash" d="M825 594V620"/>
+
+  <path class="line" d="M1040 330H1200"/>
+  <path class="line" d="M1040 575H1200"/>
+
+  <rect class="card" x="1200" y="180" width="310" height="230" rx="24"/>
+  <text class="h2 navy" x="1240" y="236">Synthetic fixtures</text>
+  <text class="body muted" x="1240" y="278">14 care locations</text>
+  <text class="body muted" x="1240" y="314">cost • travel • coverage</text>
+  <text class="body muted" x="1240" y="350">slots • access • inert notes</text>
+
+  <rect class="card" x="1200" y="490" width="310" height="230" rx="24"/>
+  <text class="h2 navy" x="1240" y="546">Verifiable outcome</text>
+  <text class="body muted" x="1240" y="588">structured receipt</text>
+  <text class="body muted" x="1240" y="624">audit history</text>
+  <text class="body muted" x="1240" y="660">print + JSON export</text>
+
+  <text class="small muted" x="90" y="830">Critical property: commit_booking is absent before approval and removed after revocation, expiry, reset, change, or success.</text>
+</svg>
