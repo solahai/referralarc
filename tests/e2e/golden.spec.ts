@@ -27,6 +27,7 @@ test.beforeEach(async ({ page }) => {
 
 test('completes the golden agent + human interleaving flow', async ({ page }) => {
   await page.goto('/demo');
+  await expect(page.locator('main[data-hydrated="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Got it' }).click();
   await expect(page.getByText('Native WebMCP connected')).toBeVisible();
 
@@ -56,9 +57,11 @@ test('completes the golden agent + human interleaving flow', async ({ page }) =>
 test('human fallback, reset, and mobile layout remain usable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/demo');
-  await expect(page.getByText('Native WebMCP connected')).toBeVisible();
+  await expect(page.locator('main[data-hydrated="true"]')).toBeVisible();
   await page.getByRole('button', { name: 'Got it' }).click();
-  await page.getByRole('button', { name: 'Save to care plan' }).click();
+  const save = page.getByRole('button', { name: 'Save to care plan' });
+  await expect(save).toBeVisible();
+  await save.click();
   await page.getByRole('button', { name: 'Draft from profile' }).click();
   await page.getByRole('button', { name: 'Prepare booking' }).click();
   await expect(page.getByRole('button', { name: 'Approve booking' })).toBeVisible();
@@ -70,7 +73,7 @@ test('human fallback, reset, and mobile layout remain usable', async ({ page }) 
 test('landing and demo have no serious accessibility violations', async ({ page }) => {
   for (const path of ['/', '/demo']) {
     await page.goto(path);
-    if (path === '/demo') await expect(page.getByText('Native WebMCP connected')).toBeVisible();
+    if (path === '/demo') await expect(page.locator('main[data-hydrated="true"]')).toBeVisible();
     const results = await new AxeBuilder({ page }).disableRules(['region']).analyze();
     const serious = results.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''));
     expect(serious).toEqual([]);

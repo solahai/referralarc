@@ -12,7 +12,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: `env PATH=/home/solahai/.local/node-v24.5.0/bin:/usr/bin:/bin npx vinext dev --port ${port}`,
+    command: `npm run dev -- --port ${port}`,
     url: baseURL,
     reuseExistingServer: true,
     timeout: 120_000,

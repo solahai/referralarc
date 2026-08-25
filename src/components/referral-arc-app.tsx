@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import { FICTIONAL_CASE } from '@/src/data/synthetic/network';
 import { CareEngine, createInitialState, getLocation, rankLocations } from '@/src/domain/engine';
@@ -57,6 +57,14 @@ function useCareWorkspace() {
   }, [engine]);
 
   return { engine, state, supported, activeTools, activities, events };
+}
+
+function useHydrated() {
+  return useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
 }
 
 function Brand({ compact = false }: { compact?: boolean }) {
@@ -359,6 +367,7 @@ function CapabilityRail({ supported, activeTools, activities, events }: { suppor
 
 export default function ReferralArcApp() {
   const { engine, state, supported, activeTools, activities, events } = useCareWorkspace();
+  const hydrated = useHydrated();
   const [walkthrough, setWalkthrough] = useState(true);
   const [promptDrawer, setPromptDrawer] = useState(false);
   const [toast, setToast] = useState('');
@@ -385,7 +394,7 @@ export default function ReferralArcApp() {
   };
 
   return (
-    <main className="app-shell">
+    <main className="app-shell" data-hydrated={hydrated}>
       <a className="skip-link" href="#care-workspace">Skip to care workspace</a>
       <header className="topbar">
         <Brand />
