@@ -12,7 +12,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: `npm run dev -- --port ${port}`,
+    command: `npm start -- --port ${port}`,
     url: baseURL,
     reuseExistingServer: true,
     timeout: 120_000,
