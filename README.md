@@ -90,6 +90,14 @@ npm run test:e2e
 
 The suite covers deterministic ranking, administrative prerequisites, alternative providers, mutation boundaries, replay and stale-state rejection, exact approval, automatic expiry, cancellation, idempotency, actual-registration truth, metadata and result budgets, hostile input, corpus drift, prompt-injection fixtures, accessibility, mobile overflow, and the complete agent and human paths.
 
+With a Chrome 149+ executable, also run the actual browser API lifecycle:
+
+~~~bash
+CHROME_PATH=/path/to/chrome npm run test:native
+~~~
+
+This calls native `getTools()` and `executeTool()`; it is separate from the deterministic in-page test harness.
+
 ### Measured release audit
 
 Lighthouse 13 was run against the previous public production release with its default mobile throttling on August 25, 2026: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction is attributable to three deprecated APIs in the hosting platform’s injected cdn-cgi challenge script; the app-authored console-error audit passes. Two pre-deployment runs of this exact release measured Performance 75–78, Accessibility 100, Best Practices 100, SEO 100, LCP 4.2 s, CLS 0, and TBT 60–200 ms under local simulated mobile throttling. Re-measure the deployed release before submission.

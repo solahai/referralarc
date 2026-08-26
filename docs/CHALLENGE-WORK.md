@@ -30,6 +30,7 @@ The repository history begins with the completed challenge-window implementation
 - Added latest-state reconciliation, pending-registration cleanup, execution-time availability checks, and automatic expiry removal
 - Added workflow-epoch replay protection, administrative prerequisite enforcement, and safer numeric validation
 - Completed the human confirmation and revocation path and repaired alternative-provider visual/slot consistency
+- Added a native Chrome lifecycle test and repaired the callback/result adapter plus in-flight unregistration timing defects it exposed
 - Added excluded-option provenance, visible inert hostile text, synthetic-data uncertainty, and authorization countdown
 - Expanded unit, contract, security, corpus, accessibility, mobile, and end-to-end evidence
 - Rewrote the judge path around capability-lifetime consent and added an evidence-backed prize-readiness audit

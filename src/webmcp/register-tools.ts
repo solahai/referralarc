@@ -10,7 +10,7 @@ export interface ModelContextLike {
       description: string;
       inputSchema?: unknown;
       annotations?: { readOnlyHint?: boolean; untrustedContentHint?: boolean };
-      execute: (input: Record<string, unknown>, context: { signal: AbortSignal }) => Promise<unknown>;
+      execute: (input: Record<string, unknown>, context?: { signal?: AbortSignal }) => Promise<string>;
     },
     options?: { signal?: AbortSignal; exposedTo?: string[] },
   ): Promise<void>;
@@ -34,6 +34,7 @@ type Listener = (snapshot: RegistrySnapshot) => void;
 export class WebMCPRegistry {
   private registrations = new Map<ToolName, AbortController>();
   private pendingRegistrations = new Map<ToolName, AbortController>();
+  private inFlight = new Map<ToolName, number>();
   private listeners = new Set<Listener>();
   private activities: ToolActivity[] = [];
   private events: ToolEvent[] = [];
@@ -102,7 +103,7 @@ export class WebMCPRegistry {
       }
       let desired = this.desiredNames();
       for (const [name, controller] of this.registrations) {
-        if (!desired.has(name)) {
+        if (!desired.has(name) && !this.inFlight.has(name)) {
           controller.abort();
           this.registrations.delete(name);
           this.recordEvent(name, 'removed', 'Shared page state no longer permits this capability.');
@@ -127,7 +128,27 @@ export class WebMCPRegistry {
             description: definition.description,
             inputSchema: definition.inputSchema,
             annotations: definition.annotations,
-            execute: async (inputObject, { signal }) => this.run(definition, inputObject, signal),
+            // Chrome's current imperative API transports tool results as
+            // strings. Keep the domain handler structured, then encode the
+            // bounded envelope at the browser boundary.
+            execute: async (inputObject, context) => {
+              // Chrome 151 invokes the current callback with only the input
+              // object. Accept the proposed invocation signal when present,
+              // while remaining compatible with that one-argument shape.
+              const signal = context?.signal ?? new AbortController().signal;
+              this.inFlight.set(definition.name, (this.inFlight.get(definition.name) ?? 0) + 1);
+              try {
+                return JSON.stringify(await this.run(definition, inputObject, signal));
+              } finally {
+                const remaining = (this.inFlight.get(definition.name) ?? 1) - 1;
+                if (remaining > 0) this.inFlight.set(definition.name, remaining);
+                else this.inFlight.delete(definition.name);
+                // Chrome 151 cancels an invocation if its registration signal
+                // is aborted before the callback settles. Reconcile only after
+                // the browser has received the result.
+                setTimeout(() => this.reconcile(), 0);
+              }
+            },
           }, {
             signal: controller.signal,
           });
@@ -147,7 +168,7 @@ export class WebMCPRegistry {
       }
       desired = this.desiredNames();
       for (const [name, controller] of this.registrations) {
-        if (!desired.has(name)) {
+        if (!desired.has(name) && !this.inFlight.has(name)) {
           controller.abort();
           this.registrations.delete(name);
           this.recordEvent(name, 'removed', 'Latest shared page state no longer permits this capability.');

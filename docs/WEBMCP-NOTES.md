@@ -36,7 +36,7 @@ Immediate agent rediscovery after a tool change is not guaranteed by the draft. 
 
 ## Two cancellation signals
 
-The signal passed with registerTool controls registration lifetime. The signal passed to execute controls that invocation. Removing a registration does not necessarily cancel work already in flight, so commit_booking re-validates exact approval and state version immediately before the atomic transition. Cancellation after an irreversible production-side effect could not be treated as rollback; a real integration would also use a server idempotency key.
+The signal passed with registerTool controls registration lifetime. Some API revisions pass an invocation signal to execute, but Chrome 151 currently calls the callback with only the input object; the adapter accepts either shape. Chrome 151 also cancels an invocation if its registration is aborted before the callback settles, so state-driven removal is deferred until that invocation returns. Because later implementations may let in-flight work continue, commit_booking still re-validates exact approval and state version immediately before the atomic transition. Cancellation after an irreversible production-side effect could not be treated as rollback; a real integration would also use a server idempotency key.
 
 ## Tool contracts
 
@@ -47,7 +47,7 @@ All twelve tool contracts use:
 - a closed object schema with additionalProperties false
 - explicit required parameters
 - code-level validation
-- JSON-serializable structured results
+- structured internal result envelopes encoded as compact JSON strings at the native Chrome boundary
 - readOnlyHint only for domain-mutation-free reads
 - untrustedContentHint when an output represents provider-, payer-, or other external-like fixture data
 
@@ -70,4 +70,4 @@ Current Chrome guidance recommends names and parameter names up to 30 characters
 - Client-side authorization is appropriate only for this deterministic synthetic demo.
 - The app demonstrates native registration; discovery and invocation by any particular agent product must be validated in that product.
 - Tool annotations are hints, not permissions or sanitizers.
-- The draft provides JSON-serializable results; ReferralArc does not invent MCP content arrays or output-schema APIs.
+- ReferralArc keeps result envelopes structured internally, then returns their compact JSON encoding because Chrome's current imperative API transports tool results as strings. It does not invent MCP content arrays or output-schema APIs.

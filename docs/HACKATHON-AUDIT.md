@@ -48,7 +48,7 @@ Strong evidence:
 - Registration lifetime and invocation cancellation use separate signals; the handler independently rechecks authorization immediately before commitment.
 - Tool names, descriptions, parameters, schemas, annotations, and maximum valid outputs are budget- and contract-tested.
 
-Remaining proof risk: the in-page harness proves deterministic API behavior, but the final entry still needs a recorded native-agent run. Do not claim that every browser or agent product supports WebMCP.
+Native proof: on August 26, 2026, the automated smoke test passed in Chrome 151.0.7922.34 using native `getTools()` and `executeTool()`: ten safe tools initially, commit absent before authorization, present after authorization, removed after successful use, and receipt available. The final entry still needs this repeated on the exact deployed release and a recorded natural-language agent run. Do not claim that every browser or agent product supports WebMCP.
 
 ### Execution
 
@@ -93,6 +93,7 @@ Remaining differentiation risk: referral scheduling is a crowded category. Every
 - The accessibility audit covers the full landmark structure rather than suppressing the `region` rule.
 - The mobile and no-WebMCP fallback explicitly show truthful native availability rather than simulated registration.
 - The framework and build toolchain were upgraded together until the full production-and-development dependency audit reported zero known vulnerabilities.
+- Native Chrome testing exposed and closed two browser-boundary defects that the in-page harness could not: the current one-argument callback shape and Chrome 151 cancelling an invocation when its registration is removed before the callback settles.
 
 ## Non-negotiable pre-submission checklist
 

@@ -42,3 +42,7 @@ If native WebMCP is unavailable, use Save to care plan, Draft from profile, Prep
 ## Automated proof
 
 Run the five commands in the README Verify section. The end-to-end suite uses an in-page standards-shaped ModelContext harness so it can prove registration, removal, invocation, and shared visual state deterministically in CI. Native testing is still required in the challenge-supported browser before submission.
+
+For a native Chrome 149+ API smoke test, start the production build on port 4173 and run `CHROME_PATH=/path/to/chrome npm run test:native`. This launches Chrome with the WebMCP testing features, calls `getTools()` and `executeTool()` directly, proves the ten-tool safe surface, confirms commit is absent before human authorization, invokes it after authorization, and proves removal plus receipt availability after use. This proves native browser behavior; it does not replace repeated natural-language agent evals.
+
+Recorded local evidence: `docs/evidence/native-webmcp-chrome151.json`.

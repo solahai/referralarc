@@ -24,6 +24,7 @@ This document records observable gates; it does not assign ReferralArc its own j
 - 2 — Registration and invocation cancellation handled
 - 2 — Metadata and representative result-budget tests
 - 2 — Same-origin secure-context deployment policy
+- 3 — Native Chrome 149+ getTools/executeTool lifecycle smoke test
 
 ## Security and privacy
 
@@ -46,7 +47,7 @@ This document records observable gates; it does not assign ReferralArc its own j
 
 ## Engineering evidence
 
-- 3 — 45 unit/contract/security tests and 8 end-to-end tests pass
+- 3 — 46 unit/contract/security tests and 8 end-to-end tests pass
 - 2 — Typecheck, lint, and production build pass
 - 2 — Full production and development dependency audit reports zero known vulnerabilities and is enforced in CI
 - 2 — README, judge guide, demo script, and submission copy
@@ -57,7 +58,7 @@ This document records observable gates; it does not assign ReferralArc its own j
 
 ## Release blockers
 
-- Native WebMCP must be rechecked in the challenge-supported browser and recorded as evidence.
+- Native WebMCP must be rechecked on the exact deployed release and recorded in the final video; the local Chrome API lifecycle smoke test is automated separately.
 - The 65-case corpus is contract-checked by CI, but a real-agent repeated evaluation and published pass rate remain a pre-submission evidence task.
 - The Best Practices above 90 production target remains externally blocked by the hosting platform’s injected script; app-authored console errors are zero.
 - Public access must remain free through the end of judging.

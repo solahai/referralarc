@@ -12,6 +12,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:native": "node scripts/native-webmcp-smoke.mjs",
     "eval:contracts": "vitest run tests/contract/evals.test.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test"

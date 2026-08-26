@@ -6,6 +6,18 @@ import { MockModelContext } from '@/src/webmcp/testing/mock-model-context';
 const settle = () => new Promise((resolve) => setTimeout(resolve, 8));
 
 describe('state-aware WebMCP registration', () => {
+  it('encodes structured envelopes at the native Chrome boundary', async () => {
+    const engine = new CareEngine();
+    const context = new MockModelContext();
+    const registry = new WebMCPRegistry(engine, context);
+    registry.start();
+    await settle();
+    const raw = await context.executeRaw('get_case_summary', {});
+    expect(typeof raw).toBe('string');
+    expect(JSON.parse(raw)).toMatchObject({ ok: true, stateVersion: 1 });
+    registry.stop();
+  });
+
   it('keeps commit absent before approval and removes it after commit', async () => {
     const engine = new CareEngine();
     const context = new MockModelContext();
