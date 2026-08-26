@@ -113,6 +113,30 @@ describe('deterministic care coordination engine', () => {
     expect(engine.getState().preparedBooking).toBeNull();
   });
 
+  it('revokes authorization without discarding the reviewed draft', () => {
+    const engine = new CareEngine();
+    prepare(engine);
+    engine.approveBooking();
+    const booking = engine.getState().preparedBooking;
+    const result = engine.revokeApproval();
+    expect(result.ok).toBe(true);
+    expect(engine.getState().approval).toBeNull();
+    expect(engine.getState().preparedBooking).toEqual(booking);
+    expect(engine.getState().status).toBe('AWAITING_HUMAN_APPROVAL');
+  });
+
+  it('keeps repeated safe actions idempotent and preserves active authorization', () => {
+    const engine = new CareEngine();
+    prepare(engine);
+    engine.approveBooking();
+    const before = engine.getState();
+    expect(engine.savePlanOption('northline', 1).ok).toBe(true);
+    expect(engine.draftIntake(2).ok).toBe(true);
+    expect(engine.prepareBooking('northline', 'northline_slot_1', 3).ok).toBe(true);
+    expect(engine.approveBooking().ok).toBe(true);
+    expect(engine.getState()).toEqual(before);
+  });
+
   it('resets all facts with a fresh workflow epoch', () => {
     const engine = new CareEngine();
     engine.savePlanOption('northline', 1);

@@ -68,17 +68,6 @@ function useHydrated() {
   );
 }
 
-function useWalkthroughSeen() {
-  return useSyncExternalStore(
-    (onStoreChange) => {
-      window.addEventListener('storage', onStoreChange);
-      return () => window.removeEventListener('storage', onStoreChange);
-    },
-    () => window.localStorage.getItem('referralarc-walkthrough') === 'seen',
-    () => false,
-  );
-}
-
 function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link className="brand" href="/">
@@ -313,7 +302,47 @@ function ApprovalCountdown({ expiresAt }: { expiresAt: string }) {
   return <>{Math.floor(secondsRemaining / 60)}:{String(secondsRemaining % 60).padStart(2, '0')} remaining</>;
 }
 
-function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, onCommit }: { state: CareState; supported: boolean; commitAvailable: boolean; onApprove: () => void; onReject: () => void; onCommit: () => void }) {
+function CapabilityBoundary({ state, supported, activeTools, onCopyPrompt }: { state: CareState; supported: boolean; activeTools: ToolName[]; onCopyPrompt: () => void }) {
+  const commitAvailable = activeTools.includes('commit_booking');
+  const safeToolCount = activeTools.filter((name) => name !== 'commit_booking' && name !== 'get_action_receipt').length;
+  const phase = state.appointment
+    ? commitAvailable ? 'removing' : 'consumed'
+    : state.approval
+      ? commitAvailable ? 'live' : supported ? 'pending' : 'authorized-fallback'
+      : state.preparedBooking ? 'awaiting' : 'locked';
+  const capabilityLabel = {
+    locked: 'Absent',
+    awaiting: 'Absent · human locked',
+    pending: 'Pending / unavailable',
+    live: 'Registered now',
+    'authorized-fallback': 'Authorized · native unavailable',
+    removing: 'Consumed · removing…',
+    consumed: 'Consumed + removed',
+  }[phase];
+  const humanLabel = state.appointment
+    ? 'Action completed'
+    : state.approval
+      ? 'Exact lease active'
+      : state.preparedBooking ? 'Exact draft ready' : 'Not requested';
+  return (
+    <section className={`capability-boundary boundary-${phase}`} aria-labelledby="boundary-title">
+      <div className="boundary-heading">
+        <div><p className="eyebrow">The WebMCP moment</p><h2 id="boundary-title">Human authority changes the API.</h2><p>The agent may read and prepare. Only Maya can create a temporary, one-use confirmation capability.</p></div>
+        <span className={`native-badge ${supported ? 'connected' : ''}`}>{supported ? 'Native WebMCP detected' : 'Progressive-enhancement preview'}</span>
+      </div>
+      <div className="boundary-flow">
+        <div className="boundary-node safe-node"><small>Agent safe zone</small><strong>Read + prepare</strong><span>{supported ? `${safeToolCount} capabilities verified now` : 'Human fallback remains complete'}</span></div>
+        <span className="boundary-connector" aria-hidden="true"><i /></span>
+        <div className={`boundary-node human-node ${state.approval ? 'active' : ''}`}><small>Human control</small><strong>{humanLabel}</strong><span>{state.approval ? <>Expires in <ApprovalCountdown expiresAt={state.approval.expiresAt} /></> : state.preparedBooking ? 'Review one visible action' : 'No blanket permission'}</span></div>
+        <span className="boundary-connector" aria-hidden="true"><i /></span>
+        <div className={`boundary-node commit-node ${phase}`}><small>Consequential capability</small><code>commit_booking</code><strong aria-live="polite">{capabilityLabel}</strong></div>
+      </div>
+      <div className="boundary-footer"><div><span>Exact draft</span><span>10-minute lease</span><span>One use</span><span>Automatic removal</span></div>{!state.appointment && <button type="button" onClick={onCopyPrompt}>Copy judge prompt</button>}</div>
+    </section>
+  );
+}
+
+function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, onRevoke, onCommit }: { state: CareState; supported: boolean; commitAvailable: boolean; onApprove: () => void; onReject: () => void; onRevoke: () => void; onCommit: () => void }) {
   const cardRef = useRef<HTMLElement>(null);
   const preparedBookingId = state.preparedBooking?.id;
   const shouldReveal = Boolean(state.preparedBooking && !state.appointment);
@@ -341,6 +370,11 @@ function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, 
               ? 'Native registration is still being verified. The human fallback can confirm only this exact draft.'
               : 'Human confirmation is now available for this exact draft. No native tool is registered in this browser.'
           : 'Authorization does not book anything. In a supported browser it temporarily enables commit_booking for this exact draft for ten minutes.'}</p>
+        <div className={`lease-contract ${state.approval ? 'live' : ''}`}>
+          <div><span>Capability lease</span><code>commit_booking</code></div>
+          <strong>{state.approval ? (commitAvailable ? 'LIVE' : supported ? 'PENDING / UNAVAILABLE' : 'AUTHORIZED') : 'NOT REGISTERED'}</strong>
+          <dl><div><dt>Scope</dt><dd>{state.preparedBooking.id}</dd></div><div><dt>Draft version</dt><dd>v{state.preparedBooking.stateVersion}</dd></div><div><dt>Effect</dt><dd>Confirm once</dd></div></dl>
+        </div>
         <dl className="approval-details">
           <div><dt>Location</dt><dd>{location.name}</dd></div>
           <div><dt>Date & time</dt><dd>{formatSlot(slot.startsAt)}</dd></div>
@@ -352,7 +386,7 @@ function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, 
         <div className="sharing-summary"><strong>Information used for this action</strong><span>Preferred name · text contact · access accommodation · referral ID · fictional coverage member status</span></div>
         <div className="approval-actions">
           {state.approval
-            ? <><button className="primary-button" onClick={onCommit}>Confirm authorized booking</button><button className="outline-button" onClick={onReject}>Revoke authorization</button></>
+            ? <><button className="primary-button" onClick={onCommit}>Confirm authorized booking</button><button className="outline-button" onClick={onRevoke}>Revoke authorization</button></>
             : <><button className="primary-button" onClick={onApprove}>Authorize this exact appointment</button><button className="outline-button" onClick={onReject}>Reject & revise</button></>}
         </div>
       </div>
@@ -360,7 +394,7 @@ function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, 
   );
 }
 
-function Receipt({ state }: { state: CareState }) {
+function Receipt({ state, supported, commitAvailable }: { state: CareState; supported: boolean; commitAvailable: boolean }) {
   if (!state.appointment) return null;
   const location = getLocation(state.appointment.locationId)!;
   const slot = location.slots.find((item) => item.id === state.appointment!.slotId)!;
@@ -370,6 +404,7 @@ function Receipt({ state }: { state: CareState }) {
       <div className="receipt-check" aria-hidden="true">✓</div>
       <div><p className="eyebrow">Fictional appointment confirmed</p><h2 id="receipt-title">{location.name}</h2><p>{formatSlot(slot.startsAt)} · ${location.estimatedCost} estimated · Wheelchair accessible</p></div>
       <dl><div><dt>Appointment ID</dt><dd>{state.appointment.id}</dd></div><div><dt>Receipt</dt><dd>{receipt.id}</dd></div><div><dt>State</dt><dd>v{state.stateVersion}</dd></div></dl>
+      <div className="consumed-capability"><span aria-hidden="true">✓</span><div><strong>Capability boundary closed</strong><p>{supported ? <><code>commit_booking</code> {commitAvailable ? 'is being removed.' : 'was consumed once and removed.'}</> : 'The human fallback completed without creating a native capability.'}</p></div></div>
       <p className="receipt-disclosure">Demonstration only. No real provider was contacted and no real appointment was created.</p>
     </section>
   );
@@ -384,7 +419,7 @@ function CapabilityRail({ state, supported, activeTools, activities, events }: {
     <aside className="rail" aria-label="Agent and WebMCP information">
       <section className="support-card">
         <span className={supported ? 'support-dot live' : 'support-dot'} aria-hidden="true" />
-        <div><strong>{supported ? 'Native WebMCP connected' : 'Human mode · WebMCP not detected'}</strong><p>{supported ? `${activeTools.length} tools successfully registered through document.modelContext.` : 'No native tools are registered here. The complete visual fallback remains usable.'}</p></div>
+        <div><strong>{supported ? 'Native WebMCP detected' : 'Human mode · WebMCP not detected'}</strong><p>{supported ? `${activeTools.length} tools successfully registered through document.modelContext.` : 'No native tools are registered here. The complete visual fallback remains usable.'}</p></div>
       </section>
       {recent && <section className="live-action-strip" aria-live="polite"><span className={`activity-status ${recent.status}`} /><div><strong>{recent.toolName}</strong><p>{recent.summary ?? 'Working with shared state…'}</p></div><small>{recent.durationMs ?? '…'} ms</small></section>}
       <section className="panel capability-panel">
@@ -408,7 +443,7 @@ function CapabilityRail({ state, supported, activeTools, activities, events }: {
               })}
             </ul>
             {!supported && <div className="fallback-boundary" aria-label="WebMCP capability boundary preview"><p className="eyebrow">Supported-browser behavior</p><strong>{state.approval ? 'Exact confirmation is authorized.' : 'Reversible tools register first.'}</strong><span>{state.approval ? <><code>commit_booking</code> would now be registered for this exact draft.</> : <><code>commit_booking</code> remains absent until exact, time-limited human authorization.</>}</span></div>}
-            {supported && !activeTools.includes('commit_booking') && <div className="gated-tool"><span className="tool-kind commit">commit</span><div><strong>Not registered: confirm booking</strong><code>commit_booking</code></div><b>Human locked</b></div>}
+            {supported && !activeTools.includes('commit_booking') && <div className="gated-tool"><span className="tool-kind commit">commit</span><div><strong>{state.approval ? 'Unavailable: confirm booking' : 'Not registered: confirm booking'}</strong><code>commit_booking</code></div><b>{state.approval ? 'Check registry event' : 'Human locked'}</b></div>}
             {registrationEvent && <div className={`registration-event ${registrationEvent.action}`}><span>{registrationEvent.action === 'added' ? '+' : registrationEvent.action === 'removed' ? '−' : '!'}</span><p><strong>{registrationEvent.toolName}</strong> {registrationEvent.action}. {registrationEvent.reason}</p></div>}
           </div>
         ) : (
@@ -436,8 +471,6 @@ function CapabilityRail({ state, supported, activeTools, activities, events }: {
 export default function ReferralArcApp() {
   const { engine, state, supported, activeTools, activities, events } = useCareWorkspace();
   const hydrated = useHydrated();
-  const walkthroughSeen = useWalkthroughSeen();
-  const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
   const [promptDrawer, setPromptDrawer] = useState(false);
   const [toast, setToast] = useState('');
   const promptTriggerRef = useRef<HTMLButtonElement>(null);
@@ -494,6 +527,7 @@ export default function ReferralArcApp() {
   };
   const approve = () => flash(engine.approveBooking().summary);
   const reject = () => flash(engine.rejectBooking().summary);
+  const revoke = () => flash(engine.revokeApproval().summary);
   const commit = () => {
     if (!state.preparedBooking) return;
     flash(engine.commitBooking(state.preparedBooking.id, state.stateVersion).summary);
@@ -517,14 +551,7 @@ export default function ReferralArcApp() {
         <div className="constraints" aria-label="Appointment constraints"><span>Weekdays after 3 PM</span><span>Wheelchair access</span><span>≤ 30 min</span><span>≤ $75</span></div>
       </section>
 
-      {!walkthroughSeen && !walkthroughDismissed && (
-        <section className="walkthrough" aria-label="Quick orientation">
-          <div><span>1</span><p><strong>Ask your browser agent</strong>Use the prompt below.</p></div>
-          <div><span>2</span><p><strong>Watch shared state</strong>Tools update this same workspace.</p></div>
-          <div><span>3</span><p><strong>You authorize consequences</strong>The commit tool stays hidden until authorization.</p></div>
-          <button onClick={() => { setWalkthroughDismissed(true); window.localStorage.setItem('referralarc-walkthrough', 'seen'); window.requestAnimationFrame(() => workspaceRef.current?.focus()); }}>Got it</button>
-        </section>
-      )}
+      <CapabilityBoundary state={state} supported={supported} activeTools={activeTools} onCopyPrompt={() => { navigator.clipboard.writeText(state.approval ? COMMIT_PROMPT : GOLDEN_PROMPT); flash('Judge prompt copied.'); }} />
 
       <div ref={workspaceRef} className="workspace-grid" id="care-workspace" tabIndex={-1}>
         <CareJourney state={state} />
@@ -537,8 +564,8 @@ export default function ReferralArcApp() {
           <div className="care-scroll">
             <div id="options"><OptionCard state={state} onSave={save} /></div>
             {state.selectedLocationId && <div id="prepare"><Preparation state={state} onDraft={draft} onPrepare={prepare} /></div>}
-            <ApprovalCard state={state} supported={supported} commitAvailable={activeTools.includes('commit_booking')} onApprove={approve} onReject={reject} onCommit={commit} />
-            <div id="receipt"><Receipt state={state} /></div>
+            <ApprovalCard state={state} supported={supported} commitAvailable={activeTools.includes('commit_booking')} onApprove={approve} onReject={reject} onRevoke={revoke} onCommit={commit} />
+            <div id="receipt"><Receipt state={state} supported={supported} commitAvailable={activeTools.includes('commit_booking')} /></div>
             <details className="audit-history">
               <summary>State version history <span>{state.history.length}</span></summary>
               <ol>{state.history.slice().reverse().map((item) => <li key={item.version}><code>v{item.version}</code><span>{item.action.replaceAll('_', ' ')}</span><small>{new Date(item.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</small></li>)}</ol>

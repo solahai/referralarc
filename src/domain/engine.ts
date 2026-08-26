@@ -265,7 +265,17 @@ export class CareEngine {
     return this.result(recommendation
       ? `${recommendation.name} is the best match for Maya’s stated administrative constraints.`
       : 'None of the requested options satisfies every recorded administrative constraint.', {
-      options: ranked,
+      options: ranked.map((option) => ({
+        locationId: option.locationId,
+        name: option.name,
+        eligible: option.eligible,
+        estimatedCost: option.estimatedCost,
+        travelMinutes: option.travelMinutes,
+        accessible: option.wheelchairAccessible,
+        coverage: option.coverage,
+        earliestSlot: option.earliestSlot?.startsAt ?? null,
+        exclusions: option.exclusions,
+      })),
       recommendation: recommendation?.locationId ?? null,
       basis: 'Deterministic schedule, cost, travel, accessibility, and fictional coverage attributes.',
     });
@@ -304,12 +314,12 @@ export class CareEngine {
 
   savePlanOption(locationId: string, expectedStateVersion: number): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed. Reset the demo to start a new workflow.');
-    const stale = this.requireVersion(expectedStateVersion);
-    if (stale) return stale;
     const option = rankLocations().find((item) => item.locationId === locationId);
     if (!option) return this.error('NOT_FOUND', 'That fictional location does not exist.');
     if (!option.eligible) return this.error('NOT_ELIGIBLE', option.exclusions.join('; '));
-    if (this.state.selectedLocationId === locationId && !this.state.preparedBooking) return this.result(`${option.name} is already saved to the plan.`);
+    if (this.state.selectedLocationId === locationId) return this.result(`${option.name} is already saved to the plan. Existing preparation was preserved.`);
+    const stale = this.requireVersion(expectedStateVersion);
+    if (stale) return stale;
     return this.mutate('save_plan_option', ['selectedLocationId', 'intakeDraft', 'status', 'approval'], () => {
       this.state.selectedLocationId = locationId;
       this.state.intakeDraft = null;
@@ -322,6 +332,7 @@ export class CareEngine {
 
   draftIntake(expectedStateVersion: number): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
+    if (this.state.intakeDraft) return this.result('The minimum intake packet is already drafted. Existing preparation was preserved.');
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
     if (!this.state.selectedLocationId) return this.error('MISSING_SELECTION', 'Save a suitable care option before drafting intake.');
@@ -344,6 +355,9 @@ export class CareEngine {
 
   prepareBooking(locationId: string, slotId: string, expectedStateVersion: number): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
+    if (this.state.preparedBooking?.locationId === locationId && this.state.preparedBooking.slotId === slotId) {
+      return this.result('This exact non-binding booking is already prepared. Existing authorization was preserved.');
+    }
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
     if (!this.state.intakeDraft || this.state.selectedLocationId !== locationId) {
@@ -369,6 +383,7 @@ export class CareEngine {
   approveBooking(): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (!this.state.preparedBooking) return this.error('NO_DRAFT', 'There is no prepared booking to approve.');
+    if (hasActiveApproval(this.state)) return this.result('This exact booking already has active human authorization.');
     return this.mutate('approve_booking', ['approval', 'status'], () => {
       this.state.approval = {
         id: `approval_booking_${String(this.state.workflowEpoch).padStart(2, '0')}`,
@@ -389,6 +404,15 @@ export class CareEngine {
       this.state.approval = null;
       this.state.status = this.state.intakeDraft ? 'INTAKE_DRAFTED' : 'OPTION_SELECTED';
     }, 'The prepared booking was rejected and no appointment was confirmed.');
+  }
+
+  revokeApproval(): ResultEnvelope {
+    if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
+    if (!this.state.approval) return this.error('NO_APPROVAL', 'There is no active authorization to revoke.');
+    return this.mutate('revoke_approval', ['approval', 'status'], () => {
+      this.state.approval = null;
+      this.state.status = this.state.preparedBooking ? 'AWAITING_HUMAN_APPROVAL' : 'INTAKE_DRAFTED';
+    }, 'Human authorization was revoked. The prepared draft remains available for review.');
   }
 
   expireApproval(at = Date.now()): ResultEnvelope {

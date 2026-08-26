@@ -4,16 +4,16 @@ import './globals.css';
 export const metadata: Metadata = {
   metadataBase: new URL('https://referralarc.docsplainai.chatgpt.site'),
   title: {
-    default: 'ReferralArc — Human-governed care coordination',
+    default: 'ReferralArc — Capability-lifetime consent for WebMCP',
     template: '%s · ReferralArc',
   },
-  description: 'A human-governed WebMCP workspace for the administrative handoff after a clinician has ordered care.',
+  description: 'A WebMCP care-coordination demo where exact human authorization temporarily creates the consequential browser capability.',
   applicationName: 'ReferralArc',
   alternates: { canonical: '/' },
   icons: { icon: '/favicon.svg' },
   openGraph: {
-    title: 'ReferralArc — Human-governed care coordination',
-    description: 'After a clinician orders care, a person and browser agent coordinate the next step while human authorization controls confirmation.',
+    title: 'ReferralArc — Capability-lifetime consent for WebMCP',
+    description: 'The agent prepares. A person decides whether one exact confirmation capability may temporarily exist.',
     type: 'website',
     url: '/',
     siteName: 'ReferralArc',
@@ -21,8 +21,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'ReferralArc — Human-governed care coordination',
-    description: 'A clinician orders care; a person and browser agent coordinate the administrative handoff.',
+    title: 'ReferralArc — Capability-lifetime consent for WebMCP',
+    description: 'Human authorization temporarily changes the browser agent’s native capability surface.',
     images: ['/og.png'],
   },
 };

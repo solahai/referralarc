@@ -47,9 +47,33 @@ describe('state-aware WebMCP registration', () => {
     engine.approveBooking();
     await settle();
     expect(context.tools.has('commit_booking')).toBe(true);
-    engine.rejectBooking();
+    engine.revokeApproval();
     await settle();
     expect(context.tools.has('commit_booking')).toBe(false);
+    expect(engine.getState().preparedBooking).not.toBeNull();
+    registry.stop();
+  });
+
+  it('preserves the active capability lease when the agent retries original safe calls', async () => {
+    const engine = new CareEngine();
+    const context = new MockModelContext();
+    const registry = new WebMCPRegistry(engine, context);
+    registry.start();
+    await settle();
+    await context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 });
+    await context.execute('draft_intake', { expectedStateVersion: 2 });
+    await context.execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 });
+    engine.approveBooking();
+    await settle();
+    const authorized = engine.getState();
+
+    await context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 });
+    await context.execute('draft_intake', { expectedStateVersion: 2 });
+    await context.execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 });
+    await settle();
+
+    expect(engine.getState()).toEqual(authorized);
+    expect(context.tools.has('commit_booking')).toBe(true);
     registry.stop();
   });
 

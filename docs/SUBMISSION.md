@@ -6,13 +6,13 @@ ReferralArc
 
 ## Tagline
 
-The human-governed handoff from referral to confirmed care.
+Exact human authorization that temporarily changes the browser agent’s native capabilities.
 
 ## Description
 
 ReferralArc is a patient-approved action layer for the work that begins after a clinician has already ordered care. In the synthetic golden path, Maya’s MRI order is on file before ReferralArc starts. A browser agent filters administrative options by cost estimate, synthetic coverage, travel, accessibility, availability, and prerequisites; compares finalists; drafts minimum intake; and prepares a booking. It cannot confirm that appointment until Maya authorizes the exact draft.
 
-The safety boundary is expressed in the WebMCP capability surface itself. commit_booking is not registered before authorization. After authorization it appears dynamically, scoped to the draft ID, workflow epoch, state version, and ten-minute expiry. Rejection, explicit revocation, reset, state change, successful commit, or automatic expiry removes it. The handler still re-checks authorization immediately before the atomic transition and prevents duplicate commits.
+The safety boundary is expressed in the WebMCP capability surface itself. commit_booking is not registered before authorization. After authorization it appears dynamically as a one-action capability lease, scoped to the draft ID, workflow epoch, state version, and ten-minute expiry. Rejection, explicit revocation, reset, state change, successful commit, or automatic expiry removes it. The handler still re-checks authorization immediately before the atomic transition and prevents duplicate commits.
 
 ## Why this fits WebMCP
 
@@ -28,7 +28,7 @@ Downstream coordination requires multiple structured actions over shared page st
 
 ## Implementation
 
-ReferralArc uses native document.modelContext.registerTool with twelve closed-schema tools. Ten safe read/draft capabilities are available from the start so a one-turn preparation path does not depend on immediate tool rediscovery. commit_booking appears only after exact authorization; get_action_receipt appears after completion. AbortControllers manage registration lifetimes. A latest-state reconciler tracks successful registrations, surfaces failures, removes stale capabilities, and actively revokes expired approval. Schemas guide the agent, while runtime validators, allowlists, safe-integer versions, administrative prerequisites, workflow epochs, approval scoping, cancellation checks, and idempotency enforce behavior.
+ReferralArc uses native document.modelContext.registerTool with twelve closed-schema tools. Ten safe read/draft capabilities are available from the start so a one-turn preparation path does not depend on immediate tool rediscovery. commit_booking appears only after exact authorization; get_action_receipt appears after completion. AbortControllers manage registration lifetimes. A latest-state reconciler tracks successful registrations, surfaces failures, removes stale capabilities, and actively revokes expired approval. Schemas guide the agent, while runtime validators, allowlists, safe-integer versions, administrative prerequisites, workflow epochs, approval scoping, cancellation checks, retry-safe no-ops, and commit idempotency enforce behavior.
 
 The responsive app includes a landing page, deep-linked demo, truthful native-registration inspector, live agent activity, excluded-option provenance, audit history, keyboard-safe dialog, print, care-plan JSON and FHIR-shaped exports, a complete human-only fallback, and deterministic synthetic fixtures. Automated unit, contract, security, accessibility, mobile, and end-to-end tests cover the golden path, alternatives, expiry, registration failure, replay, and hostile input.
 

@@ -2,7 +2,7 @@
 
 ## 0:00–0:14 — cold open on the invention
 
-Start on a prepared draft. Point to the native rail: commit_booking is not registered. Select Authorize this exact appointment and show commit_booking appear.
+Start on a prepared draft. Point to the capability boundary: the agent safe zone is live, but commit_booking is absent. Select Authorize this exact appointment. Show the exact ten-minute lease turn live and the native registration appear.
 
 “The booking capability did not exist. Maya authorized one exact appointment, so the page registered it. That is ReferralArc.”
 
@@ -26,13 +26,13 @@ All safe preparation tools were available at turn start, so this path does not r
 
 ## 1:22–1:52 — human authority changes the API
 
-Review exact facility, time, estimate, access, synthetic coverage signal, information used, and countdown. commit_booking is absent—not disabled. Select Authorize this exact appointment and show the successful native registration event.
+Review exact facility, time, estimate, access, synthetic coverage signal, information used, and countdown. commit_booking is absent—not disabled. Select Authorize this exact appointment and show the scoped lease plus successful native registration event.
 
 “Human authority changes what the browser agent can discover.”
 
 ## 1:52–2:16 — commit and receipt
 
-On a fresh turn, ask: “Re-read the current case state, then confirm only the exact appointment I approved.” Show the receipt, audit history, and commit_booking removal.
+On a fresh turn, ask: “Re-read the current case state, then confirm only the exact appointment I approved.” Show the receipt, audit history, and capability boundary close as commit_booking is consumed and removed.
 
 ## 2:16–2:30 — close
 
@@ -42,7 +42,7 @@ On a fresh turn, ask: “Re-read the current case state, then confirm only the e
 
 - Narrated public YouTube video
 - Strictly under three minutes
-- Browser chrome and live URL visible
+- Live URL clearly identified; crop third-party browser/product marks unless their use is authorized
 - Native WebMCP first; human fallback mentioned
 - Tool registry before and after authorization visible
 - Registration event and automatic expiry explained

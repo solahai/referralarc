@@ -30,6 +30,8 @@ The registration surface is reconciled against the latest domain state:
 
 Safe preparation tools stay registered from turn start because the current draft does not guarantee immediate browser-agent rediscovery after each call. Their handlers enforce prerequisites and stale-state checks. Dynamic registration is reserved for the consequential commit boundary. The registry does not churn unchanged tools, tracks pending controllers, derives the rail only from successful registrations, exposes failure events, recomputes desired tools from the latest state before and after awaited registrations, and rechecks availability inside every handler.
 
+Agent frameworks may retry a successful call after a transport or observation ambiguity. Repeating the current selected option, intake draft, prepared booking, or active authorization is therefore a domain no-op: it returns the current version and preserves later work. Revocation is also distinct from rejection: it removes the capability lease but retains the reviewed booking draft.
+
 Immediate agent rediscovery after a tool change is not guaranteed by the draft. The entire reversible preparation sequence is therefore discoverable in the first turn. After authorization, the golden path deliberately uses a subsequent user turn: “Re-read the current case state, then confirm only the exact appointment I approved.” The capability rail independently proves that commit_booking entered the page registry.
 
 ## Two cancellation signals

@@ -38,6 +38,7 @@ This document records observable gates; it does not assign ReferralArc its own j
 
 - 4 — Responsive 390, 768, 1280, and 1440 layouts reviewed
 - 3 — Automated serious/critical accessibility scan passes
+- 2 — Full Axe landmark audit runs without disabling the region rule
 - 3 — Keyboard focus, semantics, and live status
 - 2 — Reduced-motion support
 - 2 — Shared status hierarchy and plain-language errors
@@ -45,13 +46,14 @@ This document records observable gates; it does not assign ReferralArc its own j
 
 ## Engineering evidence
 
-- 3 — Unit, contract, security, corpus-contract, and end-to-end tests pass
+- 3 — 45 unit/contract/security tests and 8 end-to-end tests pass
 - 2 — Typecheck, lint, and production build pass
+- 2 — Full production and development dependency audit reports zero known vulnerabilities
 - 2 — README, judge guide, demo script, and submission copy
 - 1 — Architecture diagram and challenge work log
 - 1 — Public MIT license
 - 2 — Public production deployment verified over HTTPS
-- 3 — Previous public build Lighthouse baseline: 99 Performance, 100 Accessibility, 81 Best Practices, 100 SEO; LCP 1.5 s, CLS 0, TBT 130 ms. Re-measure after this release. The earlier Best Practices deduction came from the hosting platform’s injected cdn-cgi script; the local app build scored 96.
+- 3 — Previous public build Lighthouse baseline: 99 Performance, 100 Accessibility, 81 Best Practices, 100 SEO; LCP 1.5 s, CLS 0, TBT 130 ms. Two local runs of this exact pre-deployment release: 75–78 Performance, 100 Accessibility, 100 Best Practices, 100 SEO; LCP 4.2 s, CLS 0, TBT 60–200 ms. Re-measure after deployment; the prior production Best Practices deduction came from the hosting platform’s injected cdn-cgi script.
 
 ## Release blockers
 
@@ -61,3 +63,4 @@ This document records observable gates; it does not assign ReferralArc its own j
 - Public access must remain free through the end of judging.
 - Public source repository and narrated YouTube video under three minutes must be attached to the submission.
 - Entrant eligibility, Devpost registration, team representative, and final submission fields require human confirmation.
+- The exact submitted release must be tagged and frozen before the deadline; no substantive post-deadline changes.

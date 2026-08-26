@@ -17,6 +17,8 @@ Assets include case state, selected option, intake draft, prepared appointment, 
 | Authorization remains discoverable after expiry | Expiry timer revokes state and aborts commit registration | Server lease with transactional expiry |
 | Old command replays after reset | Workflow epoch changes draft and appointment identifiers | Durable random nonce and idempotency store |
 | Duplicate booking | Appointment existence and receipt checks make commit idempotent | Provider idempotency key and reconciliation |
+| Safe agent retry destroys later state | Exact repeats are no-ops and preserve preparation/authorization | Durable operation IDs and transactional compare-and-set |
+| Revocation destroys reviewed draft | Revoke removes authorization only; reject-and-revise is a separate explicit action | Server authorization record separated from the prepared transaction |
 | Prompt injection in provider notes | Note is inert text, never affects rank, and is marked untrusted | Sanitization, provenance, policy filtering, monitoring |
 | Schema bypass | Closed schema plus runtime allowlists and invariants | Server validation independent of client |
 | Registration revocation races | Commit re-checks state immediately before mutation | Transactional authorization at system of record |
@@ -36,6 +38,8 @@ Assets include case state, selected option, intake draft, prepared appointment, 
 - wrong draft ID
 - stale state version
 - duplicate commit
+- repeated safe calls after preparation or authorization
+- revocation with draft preservation
 - reset/recreate replay
 - expiry-driven capability removal
 - registration failure and pending-registration cleanup

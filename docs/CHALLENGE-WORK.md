@@ -33,3 +33,8 @@ The repository history begins with the completed challenge-window implementation
 - Added excluded-option provenance, visible inert hostile text, synthetic-data uncertainty, and authorization countdown
 - Expanded unit, contract, security, corpus, accessibility, mobile, and end-to-end evidence
 - Rewrote the judge path around capability-lifetime consent and added an evidence-backed prize-readiness audit
+- Added a persistent absent → exact lease → removed capability-boundary visual across preparation, authorization, and receipt
+- Separated revocation from reject-and-revise so the reviewed draft survives a removed capability lease
+- Made repeated safe agent operations idempotent and added maximum-valid comparison output-budget coverage
+- Added an exhaustive requirement-by-requirement challenge audit and tightened all judge-facing claims
+- Upgraded the compatible Next.js, React RSC, vinext, Vite, and Cloudflare stack until the full dependency audit reached zero known vulnerabilities

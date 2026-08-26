@@ -25,8 +25,8 @@ export default function Home() {
 
       <section className="landing-hero">
         <div className="hero-copy">
-          <p className="eyebrow">After the clinical decision</p>
-          <h1>From an existing care order to a prepared next step.</h1>
+          <p className="eyebrow">A capability boundary for care coordination</p>
+          <h1>The agent prepares. Maya decides whether confirmation can exist.</h1>
           <p className="hero-lede">
             A clinician has already issued Maya’s MRI order. ReferralArc lets a browser agent handle the downstream
             administrative maze, while Maya controls the one capability that can confirm an appointment.
@@ -36,14 +36,14 @@ export default function Home() {
             <a className="text-link" href="#why">See how it works</a>
           </div>
           <div className="hero-proof">
-            <span><b>12</b> typed WebMCP tools</span>
-            <span><b>1</b> human authorization gate</span>
-            <span><b>0</b> real patient records</span>
+            <span><b>Absent</b> before authorization</span>
+            <span><b>10 min</b> exact-action lease</span>
+            <span><b>Removed</b> after one use</span>
           </div>
           <div className="mobile-boundary-preview" aria-label="Authorization changes the available capability">
             <div><small>Before authorization</small><code>commit_booking</code><strong>Absent</strong></div>
             <span aria-hidden="true">→</span>
-            <div><small>After authorization</small><code>commit_booking</code><strong>Exact draft only</strong></div>
+            <div><small>After authorization</small><code>commit_booking</code><strong>One exact use</strong></div>
           </div>
         </div>
 
@@ -69,7 +69,7 @@ export default function Home() {
               <code className="locked">commit_booking <em>locked</em></code>
             </div>
           </div>
-          <div className="approval-ribbon"><span>Human authorization changes what the agent can discover.</span><b>Authorize → tool appears</b></div>
+          <div className="approval-ribbon"><span>Human authorization changes what the agent can discover.</span><b>Absent → leased → removed</b></div>
         </div>
       </section>
 

@@ -84,6 +84,7 @@ describe('WebMCP tool contracts', () => {
       ['get_open_slots', engine.getOpenSlots('northline')],
       ['check_coverage', engine.checkCoverage('northline')],
       ['compare_options', engine.compareOptions(['northline', 'harborlight'])],
+      ['compare_options_4', engine.compareOptions(['northline', 'harborlight', 'willow', 'aster'])],
       ['get_requirements', engine.getRequirements('bluejay')],
       ['validate_readiness', engine.readiness()],
     ];

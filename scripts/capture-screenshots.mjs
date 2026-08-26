@@ -29,8 +29,14 @@ for (const [name, width, height] of [
 ]) {
   await page.setViewportSize({ width, height });
   await page.goto(`${baseURL}/demo`, { waitUntil: 'networkidle' });
-  const walkthrough = page.getByRole('button', { name: 'Got it' });
-  if (await walkthrough.isVisible()) await walkthrough.click();
+  if (name === 'desktop-1440x900') {
+    await page.getByRole('button', { name: 'Save to care plan' }).click();
+    await page.getByRole('button', { name: 'Draft from profile' }).click();
+    await page.getByRole('button', { name: 'Prepare booking' }).click();
+    await page.getByRole('button', { name: 'Authorize this exact appointment' }).click();
+    await page.locator('.commit-node').getByText('Registered now').waitFor();
+    await page.evaluate(() => window.scrollTo(0, 0));
+  }
   await page.screenshot({
     path: `${outputDir}/${name}.jpg`,
     type: 'jpeg',

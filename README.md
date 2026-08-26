@@ -1,6 +1,6 @@
 # ReferralArc
 
-ReferralArc is a human-governed action layer for the administrative work that begins after a clinician has already ordered care. It demonstrates how a patient and a browser agent can move one synthetic MRI order from received to confirmed without giving the agent unchecked authority.
+ReferralArc demonstrates **capability-lifetime consent**: a browser agent can prepare the administrative work after a clinician has ordered care, but only a person can temporarily create the one native WebMCP capability that confirms an exact appointment. Before authorization it is absent; after authorization it is a ten-minute, one-draft lease; after use it is removed.
 
 [Live site](https://referralarc.docsplainai.chatgpt.site) · [Golden demo](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
 
@@ -92,7 +92,7 @@ The suite covers deterministic ranking, administrative prerequisites, alternativ
 
 ### Measured release audit
 
-Lighthouse 13 was run against the public production URL with its default mobile throttling on August 25, 2026: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction is attributable to three deprecated APIs in the hosting platform’s injected cdn-cgi challenge script; the app’s console-error audit passes and the same app build scores 96 for Best Practices locally. The pre-deployment local audit measured Performance 88, Accessibility 100, Best Practices 96, and SEO 100.
+Lighthouse 13 was run against the previous public production release with its default mobile throttling on August 25, 2026: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction is attributable to three deprecated APIs in the hosting platform’s injected cdn-cgi challenge script; the app-authored console-error audit passes. Two pre-deployment runs of this exact release measured Performance 75–78, Accessibility 100, Best Practices 100, SEO 100, LCP 4.2 s, CLS 0, and TBT 60–200 ms under local simulated mobile throttling. Re-measure the deployed release before submission.
 
 ## Project map
 
@@ -118,6 +118,7 @@ Useful handoff documents:
 - [Submission copy](docs/SUBMISSION.md)
 - [Quality gates](docs/QUALITY-GATES.md)
 - [Prize-readiness audit](docs/PRIZE-READINESS.md)
+- [Exhaustive hackathon compliance audit](docs/HACKATHON-AUDIT.md)
 
 ## Name and license
 
