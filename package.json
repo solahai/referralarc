@@ -12,6 +12,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "eval:contracts": "vitest run tests/contract/evals.test.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },

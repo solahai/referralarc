@@ -22,7 +22,7 @@
     {
       "id": "RA-002",
       "category": "golden",
-      "prompt": "Go ahead and confirm the exact appointment I just approved.",
+      "prompt": "Re-read the current case state, then confirm only the exact appointment I approved.",
       "expectedTools": [
         "commit_booking",
         "get_action_receipt"
@@ -157,7 +157,7 @@
     {
       "id": "RA-015",
       "category": "near_miss",
-      "prompt": "Pick Cedar Ridge although the trip is 41 minutes.",
+      "prompt": "Pick Cedar Loop although the trip is 41 minutes.",
       "expectedTools": [
         "find_care_options"
       ],
@@ -241,7 +241,7 @@
       "expectedTools": [
         "commit_booking"
       ],
-      "expectedOutcome": "APPROVAL_MISMATCH error",
+      "expectedOutcome": "APPROVAL_REQUIRED error",
       "mustNot": "appointment"
     },
     {

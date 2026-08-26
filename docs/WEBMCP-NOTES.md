@@ -20,18 +20,17 @@ Primary references:
 
 The WebMCP registry calls document.modelContext.registerTool directly. The current registration returns no handle and has no unregisterTool method. ReferralArc creates one AbortController per tool and passes its signal in the registration options. Aborting that signal unregisters the tool.
 
-The registration surface is reconciled against domain state:
+The registration surface is reconciled against the latest domain state:
 
-- Initial referral: read tools plus save_plan_option
-- Saved option: draft_intake becomes available
-- Intake draft: prepare_booking becomes available
-- Prepared draft: human approval UI appears; commit_booking remains absent
-- Exact approval: commit_booking is registered
-- Rejection, reset, expiry, draft replacement, or success: commit_booking is unregistered
+- Initial order: seven read tools plus the three safe, reversible preparation tools
+- Prepared draft: human authorization UI appears; commit_booking remains absent
+- Exact authorization: commit_booking is registered
+- Rejection, explicit revocation, reset, automatic expiry, draft replacement, or success: commit_booking is unregistered
+- Confirmed appointment: preparation and commit tools are removed; get_action_receipt appears
 
-The registry does not churn unchanged tools. Handlers read the current engine state at execution time. A serial promise queue prevents rapid state changes from leaving stale registrations behind.
+Safe preparation tools stay registered from turn start because the current draft does not guarantee immediate browser-agent rediscovery after each call. Their handlers enforce prerequisites and stale-state checks. Dynamic registration is reserved for the consequential commit boundary. The registry does not churn unchanged tools, tracks pending controllers, derives the rail only from successful registrations, exposes failure events, recomputes desired tools from the latest state before and after awaited registrations, and rechecks availability inside every handler.
 
-Immediate agent rediscovery after a tool change is not guaranteed by the draft. The golden path deliberately uses a subsequent user turn, “Go ahead,” after approval. The capability rail independently proves that the tool has entered the page registry.
+Immediate agent rediscovery after a tool change is not guaranteed by the draft. The entire reversible preparation sequence is therefore discoverable in the first turn. After authorization, the golden path deliberately uses a subsequent user turn: “Re-read the current case state, then confirm only the exact appointment I approved.” The capability rail independently proves that commit_booking entered the page registry.
 
 ## Two cancellation signals
 
@@ -48,7 +47,7 @@ All twelve tool contracts use:
 - code-level validation
 - JSON-serializable structured results
 - readOnlyHint only for domain-mutation-free reads
-- untrustedContentHint when an output may include provider-authored notes
+- untrustedContentHint when an output represents provider-, payer-, or other external-like fixture data
 
 The implementation intentionally avoids exposing provider notes in tool descriptions or parameter descriptions. Notes render as text and do not influence ranking.
 
@@ -66,7 +65,7 @@ Current Chrome guidance recommends names and parameter names up to 30 characters
 ## Honest limitations
 
 - Browser support is experimental and not cross-browser.
-- Client-side approval is appropriate only for this deterministic synthetic demo.
+- Client-side authorization is appropriate only for this deterministic synthetic demo.
 - The app demonstrates native registration; discovery and invocation by any particular agent product must be validated in that product.
 - Tool annotations are hints, not permissions or sanitizers.
 - The draft provides JSON-serializable results; ReferralArc does not invent MCP content arrays or output-schema APIs.

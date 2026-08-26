@@ -21,3 +21,15 @@ This repository was created from a clean Sites scaffold on August 25, 2026, afte
 ## Evidence
 
 The repository history begins with the completed challenge-window implementation. Source timestamps, tests, screenshots, and the first commit provide dated evidence. If the project is extended after submission, later commits must clearly preserve this baseline because the Official Rules prohibit substantive submission changes after the deadline.
+
+## Prize-hardening completed on August 26, 2026
+
+- Reframed the workflow around an existing clinician-issued order and a downstream patient-approved action layer
+- Made the first-turn safe tool surface reliable without depending on immediate rediscovery
+- Made the capability rail reflect only successful native registrations and expose failures
+- Added latest-state reconciliation, pending-registration cleanup, execution-time availability checks, and automatic expiry removal
+- Added workflow-epoch replay protection, administrative prerequisite enforcement, and safer numeric validation
+- Completed the human confirmation and revocation path and repaired alternative-provider visual/slot consistency
+- Added excluded-option provenance, visible inert hostile text, synthetic-data uncertainty, and authorization countdown
+- Expanded unit, contract, security, corpus, accessibility, mobile, and end-to-end evidence
+- Rewrote the judge path around capability-lifetime consent and added an evidence-backed prize-readiness audit

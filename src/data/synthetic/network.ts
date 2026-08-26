@@ -177,8 +177,8 @@ export const FICTIONAL_CASE = {
     contactMethod: 'text' as const,
     mobilityAccommodation: 'Wheelchair-accessible entrance and changing area',
   },
-  objective: 'Complete a knee MRI referral',
-  referralDocument: { id: 'doc_referral_mri_01', label: 'Knee MRI referral', status: 'on_file' },
-  coveragePlan: { id: 'plan_horizon_demo', label: 'Horizon Everyday — fictional', memberStatus: 'active' },
+  objective: 'Coordinate an existing clinician-issued knee MRI order',
+  referralDocument: { id: 'doc_referral_mri_01', label: 'Knee MRI order / requisition', status: 'on_file' },
+  coveragePlan: { id: 'plan_example_demo', label: 'Example Coverage Plan — fictional', memberStatus: 'active' },
   disclosure: 'Demonstration using fictional healthcare data.',
 };

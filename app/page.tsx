@@ -3,6 +3,12 @@ const contrast = [
   ['ReferralArc + WebMCP', 'Discovers explicit capabilities, sends typed arguments, and receives structured results.'],
 ];
 
+const handoff = [
+  ['1 · Clinician', 'Issues the MRI order and owns the clinical decision.'],
+  ['2 · ReferralArc', 'Coordinates eligibility, logistics, minimum intake, and a reversible booking draft.'],
+  ['3 · Maya', 'Reviews one exact action and decides whether the confirmation capability may exist.'],
+];
+
 export default function Home() {
   return (
     <main className="landing" id="top">
@@ -19,29 +25,34 @@ export default function Home() {
 
       <section className="landing-hero">
         <div className="hero-copy">
-          <p className="eyebrow">Agent-native healthcare administration</p>
-          <h1>Coordinate care with your agent—not through your interface.</h1>
+          <p className="eyebrow">After the clinical decision</p>
+          <h1>From an existing care order to a prepared next step.</h1>
           <p className="hero-lede">
-            ReferralArc exposes structured, state-aware care coordination tools through WebMCP,
-            so patients can organize administrative work while keeping consequential decisions under human control.
+            A clinician has already issued Maya’s MRI order. ReferralArc lets a browser agent handle the downstream
+            administrative maze, while Maya controls the one capability that can confirm an appointment.
           </p>
           <div className="hero-actions">
             <a className="primary-button large" href="/demo">Open the golden demo <span aria-hidden="true">→</span></a>
             <a className="text-link" href="#why">See how it works</a>
           </div>
           <div className="hero-proof">
-            <span><b>12</b> focused tools</span>
-            <span><b>1</b> human approval gate</span>
+            <span><b>12</b> typed WebMCP tools</span>
+            <span><b>1</b> human authorization gate</span>
             <span><b>0</b> real patient records</span>
+          </div>
+          <div className="mobile-boundary-preview" aria-label="Authorization changes the available capability">
+            <div><small>Before authorization</small><code>commit_booking</code><strong>Absent</strong></div>
+            <span aria-hidden="true">→</span>
+            <div><small>After authorization</small><code>commit_booking</code><strong>Exact draft only</strong></div>
           </div>
         </div>
 
         <div className="hero-product" aria-label="ReferralArc product preview">
-          <div className="preview-top"><span className="mini-mark">R</span><b>Maya’s MRI referral</b><span>State v4</span></div>
+          <div className="preview-top"><span className="mini-mark">R</span><b>Maya’s existing MRI order</b><span>State v4</span></div>
           <div className="preview-body">
             <div className="preview-journey">
               <small>Care journey</small>
-              {['Referral ready', 'Options compared', 'Intake drafted', 'Human approval'].map((item, index) => (
+              {['Order received', 'Options compared', 'Intake drafted', 'Human authorization'].map((item, index) => (
                 <div key={item} className={index < 3 ? 'done' : 'pending'}><span>{index < 3 ? '✓' : index + 1}</span>{item}</div>
               ))}
             </div>
@@ -58,15 +69,20 @@ export default function Home() {
               <code className="locked">commit_booking <em>locked</em></code>
             </div>
           </div>
-          <div className="approval-ribbon"><span>Human approval changes what the agent can discover.</span><b>Approve → tool appears</b></div>
+          <div className="approval-ribbon"><span>Human authorization changes what the agent can discover.</span><b>Authorize → tool appears</b></div>
         </div>
+      </section>
+
+      <section className="handoff-section" aria-labelledby="handoff-title">
+        <div><p className="eyebrow">The real-world boundary</p><h2 id="handoff-title">ReferralArc starts after a clinician has ordered care.</h2><p>It does not diagnose, choose treatment, create referrals, or rank medical quality.</p></div>
+        <ol>{handoff.map(([title, body]) => <li key={title}><strong>{title}</strong><span>{body}</span></li>)}</ol>
       </section>
 
       <section className="why-section" id="why">
         <div>
           <p className="eyebrow">Thirty-second explanation</p>
           <h2>The page becomes a visible capability boundary.</h2>
-          <p>Both human clicks and agent calls pass through the same validation, state machine, permissions, and audit logic.</p>
+          <p>Both human clicks and agent calls pass through the same validation, state machine, authorization checks, and audit logic.</p>
         </div>
         <div className="contrast-grid">
           {contrast.map(([title, body], index) => (

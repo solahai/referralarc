@@ -20,6 +20,12 @@ describe('deterministic care coordination engine', () => {
     expect(options.find((item) => item.locationId === 'aster')?.exclusions.join(' ')).toContain('$110');
     expect(options.find((item) => item.locationId === 'cedar')?.exclusions.join(' ')).toContain('41 minutes');
     expect(options.find((item) => item.locationId === 'orchard')?.exclusions).toContain('No suitable weekday slot after 3 PM');
+    expect(options.find((item) => item.locationId === 'silvermaple')?.exclusions).toContain('Prior authorization not on file');
+  });
+
+  it('derives eligible counts instead of hard-coding the summary', () => {
+    const result = new CareEngine().findCareOptions();
+    expect(result.summary).toContain('2 leading matches and 0 additional eligible options');
   });
 
   it('does not use provider notes to rank', () => {
@@ -107,11 +113,37 @@ describe('deterministic care coordination engine', () => {
     expect(engine.getState().preparedBooking).toBeNull();
   });
 
-  it('resets all mutations identically', () => {
+  it('resets all facts with a fresh workflow epoch', () => {
     const engine = new CareEngine();
     engine.savePlanOption('northline', 1);
     engine.reset();
-    expect(engine.getState()).toEqual(createInitialState());
+    expect(engine.getState()).toEqual(createInitialState(2));
+  });
+
+  it('uses a new workflow epoch so old commit identifiers cannot replay after reset', () => {
+    const engine = new CareEngine();
+    prepare(engine);
+    engine.approveBooking();
+    const oldBookingId = engine.getState().preparedBooking!.id;
+    engine.reset();
+    prepare(engine);
+    engine.approveBooking();
+    expect(engine.getState().preparedBooking!.id).not.toBe(oldBookingId);
+    expect(engine.commitBooking(oldBookingId, engine.getState().stateVersion).error?.code).toBe('APPROVAL_REQUIRED');
+  });
+
+  it('does not recommend an option when every requested option is ineligible', () => {
+    const result = new CareEngine().compareOptions(['willow', 'aster']);
+    expect(result.summary).toContain('None');
+    expect((result.data as { recommendation: string | null }).recommendation).toBeNull();
+  });
+
+  it('prepares Harborlight using its eligible weekday slot', () => {
+    const engine = new CareEngine();
+    engine.savePlanOption('harborlight', 1);
+    engine.draftIntake(2);
+    const result = engine.prepareBooking('harborlight', 'harborlight_slot_2', 3);
+    expect(result.ok).toBe(true);
   });
 
   it('detects unavailable slots', () => {

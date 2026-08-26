@@ -1,5 +1,5 @@
 import type { CareState, ResultEnvelope, ToolActivity, ToolName } from '@/src/domain/types';
-import type { CareEngine } from '@/src/domain/engine';
+import { hasActiveApproval, type CareEngine } from '@/src/domain/engine';
 
 export interface JsonSchema {
   type: 'object';
@@ -33,11 +33,16 @@ const versionSchema = {
 async function briefDelay(signal: AbortSignal): Promise<void> {
   signal.throwIfAborted();
   await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, 80);
-    signal.addEventListener('abort', () => {
+    const finish = () => {
+      signal.removeEventListener('abort', cancel);
+      resolve();
+    };
+    const cancel = () => {
       clearTimeout(timer);
       reject(new DOMException('Tool execution cancelled.', 'AbortError'));
-    }, { once: true });
+    };
+    const timer = setTimeout(finish, 80);
+    signal.addEventListener('abort', cancel, { once: true });
   });
   signal.throwIfAborted();
 }
@@ -68,7 +73,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     title: 'Read open slots',
     description: 'Returns suitable open appointment slots for one fictional care location after applying the recorded time window.',
     inputSchema: locationSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: false },
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
     kind: 'read',
     available: () => true,
     execute: async (engine, input, signal) => { await briefDelay(signal); return engine.getOpenSlots(input.locationId as string); },
@@ -78,7 +83,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     title: 'Check coverage',
     description: 'Checks synthetic administrative coverage and estimated patient cost for one fictional care location.',
     inputSchema: locationSchema,
-    annotations: { readOnlyHint: true, untrustedContentHint: false },
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
     kind: 'read',
     available: () => true,
     execute: async (engine, input, signal) => { await briefDelay(signal); return engine.checkCoverage(input.locationId as string); },
@@ -156,7 +161,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
     annotations: { readOnlyHint: false, untrustedContentHint: false },
     kind: 'draft',
-    available: (state) => Boolean(state.selectedLocationId && !state.preparedBooking && !state.appointment),
+    available: (state) => !state.appointment,
     execute: async (engine, input, signal) => {
       await briefDelay(signal);
       return engine.draftIntake(input.expectedStateVersion as number);
@@ -178,7 +183,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
     annotations: { readOnlyHint: false, untrustedContentHint: false },
     kind: 'draft',
-    available: (state) => Boolean(state.selectedLocationId && state.intakeDraft && !state.preparedBooking && !state.appointment),
+    available: (state) => !state.appointment,
     execute: async (engine, input, signal) => {
       await briefDelay(signal);
       return engine.prepareBooking(input.locationId as string, input.slotId as string, input.expectedStateVersion as number);
@@ -199,7 +204,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
     annotations: { readOnlyHint: false, untrustedContentHint: false },
     kind: 'commit',
-    available: (state) => Boolean(state.approval && state.preparedBooking && !state.appointment),
+    available: (state) => hasActiveApproval(state) && !state.appointment,
     execute: async (engine, input, signal) => {
       await briefDelay(signal);
       signal.throwIfAborted();
@@ -230,18 +235,23 @@ export function validateToolInput(definition: ToolDefinition, input: unknown): R
     if (!allowed.has(key)) throw new TypeError(`Unexpected property: ${key}`);
   }
   for (const key of definition.inputSchema.required ?? []) {
-    if (!(key in record)) throw new TypeError(`Missing required property: ${key}`);
+    if (!Object.prototype.hasOwnProperty.call(record, key)) throw new TypeError(`Missing required property: ${key}`);
   }
   for (const [key, schema] of Object.entries(definition.inputSchema.properties)) {
     const value = record[key];
     if (value === undefined) continue;
     if (schema.type === 'array') {
-      if (!Array.isArray(value) || value.some((item) => typeof item !== 'string')) throw new TypeError(`${key} must be an array of strings.`);
+      if (!Array.isArray(value) || value.some((item) => typeof item !== 'string' || !item.trim())) throw new TypeError(`${key} must be an array of non-empty strings.`);
       if (schema.minItems && value.length < schema.minItems) throw new TypeError(`${key} has too few items.`);
       if (schema.maxItems && value.length > schema.maxItems) throw new TypeError(`${key} has too many items.`);
+      if (new Set(value).size !== value.length) throw new TypeError(`${key} contains duplicate items.`);
       if (JSON.stringify(value).length > 500) throw new TypeError(`${key} is too large.`);
     } else if (typeof value !== schema.type) {
       throw new TypeError(`${key} must be a ${schema.type}.`);
+    } else if (schema.type === 'number' && (!Number.isSafeInteger(value) || (value as number) < 1)) {
+      throw new TypeError(`${key} must be a positive safe integer.`);
+    } else if (typeof value === 'string' && !value.trim()) {
+      throw new TypeError(`${key} must not be empty.`);
     } else if (typeof value === 'string' && value.length > 80) {
       throw new TypeError(`${key} is too long.`);
     }

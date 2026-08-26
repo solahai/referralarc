@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TOOL_DEFINITIONS, validateToolInput } from '@/src/webmcp/tool-contracts';
+import { CareEngine } from '@/src/domain/engine';
 
 describe('WebMCP tool contracts', () => {
   it('uses unique, valid, concise names', () => {
@@ -37,6 +38,8 @@ describe('WebMCP tool contracts', () => {
   it('marks provider/external-like data as untrusted', () => {
     expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'find_care_options')?.annotations.untrustedContentHint).toBe(true);
     expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'get_requirements')?.annotations.untrustedContentHint).toBe(true);
+    expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'get_open_slots')?.annotations.untrustedContentHint).toBe(true);
+    expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'check_coverage')?.annotations.untrustedContentHint).toBe(true);
   });
 
   it('rejects unexpected properties', () => {
@@ -62,5 +65,34 @@ describe('WebMCP tool contracts', () => {
       slotId: 'northline_slot_1',
       expectedStateVersion: 3,
     });
+  });
+
+  it('rejects empty, duplicate, fractional, and non-finite values', () => {
+    const compare = TOOL_DEFINITIONS.find((tool) => tool.name === 'compare_options')!;
+    const save = TOOL_DEFINITIONS.find((tool) => tool.name === 'save_plan_option')!;
+    expect(() => validateToolInput(compare, { locationIds: ['northline', 'northline'] })).toThrow('duplicate');
+    expect(() => validateToolInput(save, { locationId: ' ', expectedStateVersion: 1 })).toThrow('empty');
+    expect(() => validateToolInput(save, { locationId: 'northline', expectedStateVersion: 1.5 })).toThrow('safe integer');
+    expect(() => validateToolInput(save, { locationId: 'northline', expectedStateVersion: Infinity })).toThrow('safe integer');
+  });
+
+  it('keeps representative read and write results within the 1,500-character budget', () => {
+    const engine = new CareEngine();
+    const outputs: Array<[string, unknown]> = [
+      ['get_case_summary', engine.getCaseSummary()],
+      ['find_care_options', engine.findCareOptions()],
+      ['get_open_slots', engine.getOpenSlots('northline')],
+      ['check_coverage', engine.checkCoverage('northline')],
+      ['compare_options', engine.compareOptions(['northline', 'harborlight'])],
+      ['get_requirements', engine.getRequirements('bluejay')],
+      ['validate_readiness', engine.readiness()],
+    ];
+    outputs.push(['save_plan_option', engine.savePlanOption('northline', 1)]);
+    outputs.push(['draft_intake', engine.draftIntake(2)]);
+    outputs.push(['prepare_booking', engine.prepareBooking('northline', 'northline_slot_1', 3)]);
+    outputs.push(['approve_booking', engine.approveBooking()]);
+    outputs.push(['commit_booking', engine.commitBooking('booking_draft_01', 5)]);
+    outputs.push(['get_action_receipt', engine.getActionReceipt()]);
+    outputs.forEach(([name, output]) => expect(JSON.stringify(output).length, name).toBeLessThanOrEqual(1500));
   });
 });

@@ -1,24 +1,25 @@
 'use client';
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
-import { FICTIONAL_CASE } from '@/src/data/synthetic/network';
+import { CARE_LOCATIONS, FICTIONAL_CASE } from '@/src/data/synthetic/network';
 import { CareEngine, createInitialState, getLocation, rankLocations } from '@/src/domain/engine';
 import type { CareState, ToolActivity, ToolEvent, ToolName } from '@/src/domain/types';
 import { TOOL_DEFINITIONS } from '@/src/webmcp/tool-contracts';
 import { currentModelContext, WebMCPRegistry } from '@/src/webmcp/register-tools';
 
 const JOURNEY = [
-  { status: 'REFERRAL_READY', label: 'Referral ready', detail: 'Document on file' },
+  { status: 'REFERRAL_READY', label: 'Clinician order received', detail: 'MRI order on file' },
   { status: 'OPTION_SELECTED', label: 'Option selected', detail: 'Working care plan' },
   { status: 'INTAKE_DRAFTED', label: 'Intake drafted', detail: 'Minimal information' },
   { status: 'AWAITING_HUMAN_APPROVAL', label: 'Booking prepared', detail: 'Review required' },
-  { status: 'APPROVED', label: 'Human approved', detail: 'Commit tool enabled' },
+  { status: 'APPROVED', label: 'Human approved', detail: 'Confirmation authorized' },
   { status: 'BOOKED', label: 'Appointment confirmed', detail: 'Receipt created' },
 ] as const;
 
 const STATUS_ORDER = JOURNEY.map((item) => item.status);
-const GOLDEN_PROMPT = 'Find the best option for this MRI, prepare everything you can, and stop before booking.';
+const GOLDEN_PROMPT = 'Coordinate Maya’s ordered MRI using every recorded constraint. Compare eligible options, draft only the minimum intake, prepare the best appointment, and stop before confirmation.';
+const COMMIT_PROMPT = 'Re-read the current case state, then confirm only the exact appointment I approved.';
 
 function formatSlot(value: string): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -63,6 +64,17 @@ function useHydrated() {
   return useSyncExternalStore(
     () => () => undefined,
     () => true,
+    () => false,
+  );
+}
+
+function useWalkthroughSeen() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      window.addEventListener('storage', onStoreChange);
+      return () => window.removeEventListener('storage', onStoreChange);
+    },
+    () => window.localStorage.getItem('referralarc-walkthrough') === 'seen',
     () => false,
   );
 }
@@ -200,58 +212,77 @@ function CareJourney({ state }: { state: CareState }) {
 }
 
 function OptionCard({ state, onSave }: { state: CareState; onSave: (id: string) => void }) {
-  const options = rankLocations().filter((item) => item.eligible).slice(0, 3);
+  const ranked = rankLocations();
+  const options = ranked.filter((item) => item.eligible).slice(0, 3);
+  const excluded = ranked.filter((item) => !item.eligible);
   const selected = options.find((item) => item.locationId === state.selectedLocationId);
   const recommended = options[0];
+  const displayed = selected ?? recommended;
+  const assessed = CARE_LOCATIONS.filter((item) => item.service === 'knee_mri').length;
   return (
     <section aria-labelledby="matches-title">
       <div className="workspace-section-heading">
-        <div><p className="eyebrow">Deterministic comparison</p><h2 id="matches-title">{selected ? 'Saved to the working plan' : 'Best administrative matches'}</h2></div>
+        <div><p className="eyebrow">{assessed} imaging sites assessed · {options.length} eligible</p><h2 id="matches-title">{selected ? 'Saved to the working plan' : 'Best administrative matches'}</h2></div>
         <span className="status-pill">All hard constraints applied</span>
       </div>
       <article className={`recommended-option ${selected ? 'selected' : ''}`}>
         <div className="option-header">
-          <div><span className="recommendation-label">{selected ? 'Selected option' : 'Recommended match'}</span><h3>{recommended.name}</h3><p>Earliest option meeting every hard constraint.</p></div>
-          <div className="cost"><strong>${recommended.estimatedCost}</strong><span>estimated</span></div>
+          <div><span className="recommendation-label">{selected ? 'Selected option' : 'Recommended match'}</span><h3>{displayed.name}</h3><p>{selected ? 'Saved by the human or browser agent.' : 'Earliest option meeting every hard constraint.'}</p></div>
+          <div className="cost"><strong>${displayed.estimatedCost}</strong><span>estimated</span></div>
         </div>
         <div className="option-metrics">
-          <div><small>Earliest slot</small><strong>{formatSlot(recommended.earliestSlot!.startsAt)}</strong></div>
-          <div><small>Travel</small><strong>{recommended.travelMinutes} minutes</strong></div>
+          <div><small>Earliest eligible slot</small><strong>{formatSlot(displayed.earliestSlot!.startsAt)}</strong></div>
+          <div><small>Travel</small><strong>{displayed.travelMinutes} minutes</strong></div>
           <div><small>Access</small><strong>Wheelchair ready</strong></div>
         </div>
-        <div className="why-row"><span>Why this option?</span><p>Earliest suitable appointment, covered, accessible, within travel limit, and ${recommended.estimatedCost} estimated out-of-pocket.</p></div>
+        <div className="why-row"><span>Administrative fit only</span><p>Suitable schedule, fictional coverage, wheelchair access, travel limit, and ${displayed.estimatedCost} estimated out-of-pocket. No medical-quality ranking.</p></div>
         <div className="option-footer">
-          <span className="coverage-ok">✓ Fictional coverage verified</span>
-          <button className="primary-button" type="button" disabled={state.selectedLocationId === recommended.locationId || Boolean(state.appointment)} onClick={() => onSave(recommended.locationId)}>
-            {state.selectedLocationId === recommended.locationId ? 'Saved to care plan' : 'Save to care plan'}
+          <span className="coverage-ok">✓ Synthetic coverage match · not a guarantee</span>
+          <button className="primary-button" type="button" disabled={state.selectedLocationId === displayed.locationId || Boolean(state.appointment)} onClick={() => onSave(displayed.locationId)}>
+            {state.selectedLocationId === displayed.locationId ? 'Saved to care plan' : 'Save to care plan'}
           </button>
         </div>
       </article>
       <div className="alternatives">
         <div className="section-rule"><span>Alternatives</span></div>
-        {options.slice(1).map((option) => (
+        {options.filter((option) => option.locationId !== displayed.locationId).map((option) => (
           <article className="alternative-row" key={option.locationId}>
             <div><h3>{option.name}</h3><p>{formatSlot(option.earliestSlot!.startsAt)} · {option.travelMinutes} min away</p></div>
             <div><strong>${option.estimatedCost}</strong><span>{option.locationId === 'harborlight' ? 'Lower cost · later' : 'Later appointment'}</span></div>
-            <span className="eligible-badge">Eligible</span>
+            <button className="outline-button option-save" type="button" disabled={Boolean(state.appointment)} onClick={() => onSave(option.locationId)}>Save option</button>
           </article>
         ))}
       </div>
+      <details className="excluded-evidence">
+        <summary>{excluded.length} options excluded by hard constraints <span>Inspect evidence</span></summary>
+        <div>
+          {excluded.map((option) => {
+            const source = getLocation(option.locationId);
+            return (
+              <article key={option.locationId}>
+                <div><strong>{option.name}</strong><span>{option.exclusions.join(' · ')}</span></div>
+                {source?.administrativeNote && <p><b>Untrusted provider text · ignored:</b> “{source.administrativeNote}”</p>}
+              </article>
+            );
+          })}
+        </div>
+      </details>
     </section>
   );
 }
 
 function Preparation({ state, onDraft, onPrepare }: { state: CareState; onDraft: () => void; onPrepare: () => void }) {
   const selected = state.selectedLocationId ? getLocation(state.selectedLocationId) : null;
+  const eligibleSlot = rankLocations().find((item) => item.locationId === state.selectedLocationId)?.earliestSlot;
   return (
     <section className="preparation-grid" aria-labelledby="prepare-title">
       <div className="workspace-section-heading full">
-        <div><p className="eyebrow">Administrative preparation</p><h2 id="prepare-title">Everything needed before approval</h2></div>
+        <div><p className="eyebrow">Administrative preparation</p><h2 id="prepare-title">Everything needed before authorization</h2></div>
         <span className="draft-badge">Drafts are reversible</span>
       </div>
       <article className="prep-card">
-        <div className="prep-icon">01</div><h3>Referral & requirements</h3>
-        <ul><li className="done">Referral document on file</li><li className="done">Coverage card on file</li><li className="done">Photo identification noted</li></ul>
+        <div className="prep-icon">01</div><h3>Order & requirements</h3>
+        <ul>{selected?.requirements.map((requirement) => <li className="done" key={requirement}>{requirement === 'Referral document' ? 'Clinician order on file' : requirement}</li>)}</ul>
         <span className="complete-label">Complete</span>
       </article>
       <article className="prep-card">
@@ -263,7 +294,7 @@ function Preparation({ state, onDraft, onPrepare }: { state: CareState; onDraft:
       </article>
       <article className="prep-card">
         <div className="prep-icon">03</div><h3>Booking draft</h3>
-        <p>{selected ? `Prepare ${formatSlot(selected.slots[0].startsAt)} at ${selected.name}.` : 'Save a care option before preparing a booking.'}</p>
+        <p>{selected && eligibleSlot ? `Prepare ${formatSlot(eligibleSlot.startsAt)} at ${selected.name}.` : 'Save a care option before preparing a booking.'}</p>
         <button className="outline-button" disabled={!state.intakeDraft || Boolean(state.preparedBooking)} onClick={onPrepare}>
           {state.preparedBooking ? 'Prepared for review' : 'Prepare booking'}
         </button>
@@ -272,25 +303,58 @@ function Preparation({ state, onDraft, onPrepare }: { state: CareState; onDraft:
   );
 }
 
-function ApprovalCard({ state, onApprove, onReject }: { state: CareState; onApprove: () => void; onReject: () => void }) {
+function ApprovalCountdown({ expiresAt }: { expiresAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const secondsRemaining = Math.max(0, Math.ceil((Date.parse(expiresAt) - now) / 1000));
+  return <>{Math.floor(secondsRemaining / 60)}:{String(secondsRemaining % 60).padStart(2, '0')} remaining</>;
+}
+
+function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, onCommit }: { state: CareState; supported: boolean; commitAvailable: boolean; onApprove: () => void; onReject: () => void; onCommit: () => void }) {
+  const cardRef = useRef<HTMLElement>(null);
+  const preparedBookingId = state.preparedBooking?.id;
+  const shouldReveal = Boolean(state.preparedBooking && !state.appointment);
+  useEffect(() => {
+    if (!shouldReveal) return;
+    const frame = window.requestAnimationFrame(() => {
+      cardRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      cardRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [preparedBookingId, shouldReveal]);
   if (!state.preparedBooking || state.appointment) return null;
   const location = getLocation(state.preparedBooking.locationId)!;
   const slot = location.slots.find((item) => item.id === state.preparedBooking!.slotId)!;
   return (
-    <section className={`approval-card ${state.approval ? 'approved' : ''}`} aria-labelledby="approval-title">
+    <section ref={cardRef} tabIndex={-1} className={`approval-card ${state.approval ? 'approved' : ''}`} aria-labelledby="approval-title">
       <div className="approval-signal" aria-hidden="true">{state.approval ? '✓' : '!'}</div>
       <div className="approval-content">
-        <p className="eyebrow">{state.approval ? 'Scoped approval active' : 'Human decision required'}</p>
-        <h2 id="approval-title">{state.approval ? 'The confirm tool is now discoverable' : 'Review before enabling confirmation'}</h2>
-        <p>{state.approval ? 'Tell the browser agent “Go ahead.” Only this exact draft can be committed.' : 'Approval does not book anything. It temporarily enables the agent’s commit_booking capability for this exact draft.'}</p>
+        <p className="eyebrow">{state.approval ? 'Scoped authorization active' : 'Human decision required'}</p>
+        <h2 id="approval-title">{state.approval ? (commitAvailable ? 'The confirm tool is now discoverable' : 'Confirmation authorized') : 'Review before enabling confirmation'}</h2>
+        <p>{state.approval
+          ? commitAvailable
+            ? 'Ask the browser agent to re-read the case and confirm, or use the human fallback below. Only this exact draft can be committed.'
+            : supported
+              ? 'Native registration is still being verified. The human fallback can confirm only this exact draft.'
+              : 'Human confirmation is now available for this exact draft. No native tool is registered in this browser.'
+          : 'Authorization does not book anything. In a supported browser it temporarily enables commit_booking for this exact draft for ten minutes.'}</p>
         <dl className="approval-details">
           <div><dt>Location</dt><dd>{location.name}</dd></div>
           <div><dt>Date & time</dt><dd>{formatSlot(slot.startsAt)}</dd></div>
           <div><dt>Estimated cost</dt><dd>${location.estimatedCost} · fictional</dd></div>
           <div><dt>Accessibility</dt><dd>Wheelchair accessible</dd></div>
+          <div><dt>Coverage signal</dt><dd>Synthetic match · confirm with payer</dd></div>
+          <div><dt>Authorization window</dt><dd>{state.approval ? <ApprovalCountdown expiresAt={state.approval.expiresAt} /> : 'Starts only after authorization'}</dd></div>
         </dl>
         <div className="sharing-summary"><strong>Information used for this action</strong><span>Preferred name · text contact · access accommodation · referral ID · fictional coverage member status</span></div>
-        {!state.approval && <div className="approval-actions"><button className="primary-button" onClick={onApprove}>Approve booking</button><button className="outline-button" onClick={onReject}>Edit</button><button className="text-button danger" onClick={onReject}>Reject</button></div>}
+        <div className="approval-actions">
+          {state.approval
+            ? <><button className="primary-button" onClick={onCommit}>Confirm authorized booking</button><button className="outline-button" onClick={onReject}>Revoke authorization</button></>
+            : <><button className="primary-button" onClick={onApprove}>Authorize this exact appointment</button><button className="outline-button" onClick={onReject}>Reject & revise</button></>}
+        </div>
       </div>
     </section>
   );
@@ -311,15 +375,18 @@ function Receipt({ state }: { state: CareState }) {
   );
 }
 
-function CapabilityRail({ supported, activeTools, activities, events }: { supported: boolean; activeTools: ToolName[]; activities: ToolActivity[]; events: ToolEvent[] }) {
+function CapabilityRail({ state, supported, activeTools, activities, events }: { state: CareState; supported: boolean; activeTools: ToolName[]; activities: ToolActivity[]; events: ToolEvent[] }) {
   const [tab, setTab] = useState<'tools' | 'activity'>('tools');
   const recent = activities[0];
+  const prompt = state.approval ? COMMIT_PROMPT : GOLDEN_PROMPT;
+  const registrationEvent = events.find((event) => event.action === 'failed' && !activeTools.includes(event.toolName)) ?? events[0];
   return (
     <aside className="rail" aria-label="Agent and WebMCP information">
       <section className="support-card">
         <span className={supported ? 'support-dot live' : 'support-dot'} aria-hidden="true" />
-        <div><strong>{supported ? 'Native WebMCP connected' : 'Human mode · WebMCP not detected'}</strong><p>{supported ? 'Tools below reflect live browser registration.' : 'The workspace remains usable. Open in a supported agent browser to invoke site tools.'}</p></div>
+        <div><strong>{supported ? 'Native WebMCP connected' : 'Human mode · WebMCP not detected'}</strong><p>{supported ? `${activeTools.length} tools successfully registered through document.modelContext.` : 'No native tools are registered here. The complete visual fallback remains usable.'}</p></div>
       </section>
+      {recent && <section className="live-action-strip" aria-live="polite"><span className={`activity-status ${recent.status}`} /><div><strong>{recent.toolName}</strong><p>{recent.summary ?? 'Working with shared state…'}</p></div><small>{recent.durationMs ?? '…'} ms</small></section>}
       <section className="panel capability-panel">
         <div className="rail-tabs" role="tablist" aria-label="Agent rail">
           <button role="tab" aria-selected={tab === 'tools'} onClick={() => setTab('tools')}>Capabilities <span>{activeTools.length}</span></button>
@@ -327,7 +394,7 @@ function CapabilityRail({ supported, activeTools, activities, events }: { suppor
         </div>
         {tab === 'tools' ? (
           <div className="tool-panel">
-            <div className="tool-panel-intro"><p className="eyebrow">State-aware surface</p><h2>What the agent can do now</h2><p>Capabilities are added and removed as the shared care journey changes.</p></div>
+            <div className="tool-panel-intro"><p className="eyebrow">Verified native surface</p><h2>{supported ? 'What the agent can do now' : 'No native registry detected'}</h2><p>{supported ? 'This list contains only successful browser registrations.' : 'Use the centre workspace controls, or reopen in the challenge browser.'}</p></div>
             <ul className="tool-list" tabIndex={0} aria-label="State-aware WebMCP tools">
               {TOOL_DEFINITIONS.filter((tool) => activeTools.includes(tool.name)).map((tool) => {
                 const enabled = true;
@@ -340,8 +407,9 @@ function CapabilityRail({ supported, activeTools, activities, events }: { suppor
                 );
               })}
             </ul>
-            {!activeTools.includes('commit_booking') && <div className="gated-tool"><span className="tool-kind commit">commit</span><div><strong>Confirm approved booking</strong><code>commit_booking</code></div><b>Human locked</b></div>}
-            {events.length > 0 && <div className="registration-event"><span>{events[0].action === 'added' ? '+' : '−'}</span><p><strong>{events[0].toolName}</strong> {events[0].action}. {events[0].reason}</p></div>}
+            {!supported && <div className="fallback-boundary" aria-label="WebMCP capability boundary preview"><p className="eyebrow">Supported-browser behavior</p><strong>Reversible tools register first.</strong><span><code>commit_booking</code> remains absent until exact, time-limited human authorization.</span></div>}
+            {supported && !activeTools.includes('commit_booking') && <div className="gated-tool"><span className="tool-kind commit">commit</span><div><strong>Not registered: confirm booking</strong><code>commit_booking</code></div><b>Human locked</b></div>}
+            {registrationEvent && <div className={`registration-event ${registrationEvent.action}`}><span>{registrationEvent.action === 'added' ? '+' : registrationEvent.action === 'removed' ? '−' : '!'}</span><p><strong>{registrationEvent.toolName}</strong> {registrationEvent.action}. {registrationEvent.reason}</p></div>}
           </div>
         ) : (
           <div className="activity-panel" aria-live="polite">
@@ -351,14 +419,14 @@ function CapabilityRail({ supported, activeTools, activities, events }: { suppor
               <article className="activity-item" key={activity.id}>
                 <div><span className={`activity-status ${activity.status}`} /><strong>{activity.title}</strong><small>{activity.kind} · {activity.durationMs ?? '…'} ms</small></div>
                 <p>{activity.summary ?? 'Working with the shared page state…'}</p>
-                {activity.changed && activity.changed.length > 0 && <code>{activity.changed.join(' · ')}</code>}
+                <code>{activity.toolName}{activity.receiptId ? ` · ${activity.receiptId}` : ''}{activity.changed?.length ? ` · ${activity.changed.join(' · ')}` : ''}</code>
               </article>
             ))}
           </div>
         )}
       </section>
       <section className="prompt-card">
-        <p className="eyebrow">Judge prompt</p><blockquote>“{GOLDEN_PROMPT}”</blockquote><button onClick={() => navigator.clipboard.writeText(GOLDEN_PROMPT)}>Copy prompt</button>
+        <p className="eyebrow">{state.approval ? 'Next-turn prompt' : 'Judge prompt'}</p><blockquote>“{prompt}”</blockquote><button onClick={() => navigator.clipboard.writeText(prompt)}>Copy prompt</button>
         {recent?.status === 'running' && <span className="working-label">Agent is working…</span>}
       </section>
     </aside>
@@ -368,9 +436,13 @@ function CapabilityRail({ supported, activeTools, activities, events }: { suppor
 export default function ReferralArcApp() {
   const { engine, state, supported, activeTools, activities, events } = useCareWorkspace();
   const hydrated = useHydrated();
-  const [walkthrough, setWalkthrough] = useState(true);
+  const walkthroughSeen = useWalkthroughSeen();
+  const [walkthroughDismissed, setWalkthroughDismissed] = useState(false);
   const [promptDrawer, setPromptDrawer] = useState(false);
   const [toast, setToast] = useState('');
+  const promptTriggerRef = useRef<HTMLButtonElement>(null);
+  const promptDialogRef = useRef<HTMLElement>(null);
+  const workspaceRef = useRef<HTMLDivElement>(null);
   const view = state.appointment ? 'receipt' : state.selectedLocationId ? 'prepare' : 'options';
 
   const flash = (summary: string) => {
@@ -379,18 +451,56 @@ export default function ReferralArcApp() {
   };
 
   const selectedLocation = useMemo(() => state.selectedLocationId ? getLocation(state.selectedLocationId) : null, [state.selectedLocationId]);
+  const selectedEligibleSlot = useMemo(() => rankLocations().find((item) => item.locationId === state.selectedLocationId)?.earliestSlot, [state.selectedLocationId]);
+
+  useEffect(() => {
+    if (!promptDrawer) return;
+    const dialog = promptDialogRef.current;
+    const trigger = promptTriggerRef.current;
+    const focusable = () => [...(dialog?.querySelectorAll<HTMLElement>('button, [href], [tabindex]:not([tabindex="-1"])') ?? [])];
+    const frame = window.requestAnimationFrame(() => focusable()[0]?.focus());
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setPromptDrawer(false);
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items.at(-1)!;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener('keydown', onKeyDown);
+      trigger?.focus();
+    };
+  }, [promptDrawer]);
 
   const save = (locationId: string) => flash(engine.savePlanOption(locationId, state.stateVersion).summary);
   const draft = () => flash(engine.draftIntake(state.stateVersion).summary);
   const prepare = () => {
-    if (!selectedLocation) return;
-    flash(engine.prepareBooking(selectedLocation.id, selectedLocation.slots[0].id, state.stateVersion).summary);
+    if (!selectedLocation || !selectedEligibleSlot) return;
+    flash(engine.prepareBooking(selectedLocation.id, selectedEligibleSlot.id, state.stateVersion).summary);
   };
   const approve = () => flash(engine.approveBooking().summary);
   const reject = () => flash(engine.rejectBooking().summary);
+  const commit = () => {
+    if (!state.preparedBooking) return;
+    flash(engine.commitBooking(state.preparedBooking.id, state.stateVersion).summary);
+  };
   const reset = () => {
     engine.reset();
-    setToast('Golden demo reset to the same deterministic starting state.');
+    setToast('Golden demo reset to the same synthetic facts with a fresh anti-replay workflow.');
   };
 
   return (
@@ -399,24 +509,24 @@ export default function ReferralArcApp() {
       <header className="topbar">
         <Brand />
         <div className="demo-label"><span aria-hidden="true" /> Demonstration using fictional healthcare data</div>
-        <div className="top-actions"><button className="quiet-button prompt-button" onClick={() => setPromptDrawer(true)}>Example prompts</button><DownloadMenu state={state} /><button className="quiet-button" onClick={reset}>Reset demo</button></div>
+        <div className="top-actions"><button ref={promptTriggerRef} className="quiet-button prompt-button" onClick={() => setPromptDrawer(true)}>Example prompts</button><DownloadMenu state={state} /><button className="quiet-button" onClick={reset}>Reset demo</button></div>
       </header>
 
       <section className="objective-bar">
-        <div><p className="eyebrow">Current care objective</p><h1>Complete Maya&apos;s knee MRI referral</h1></div>
+        <div><p className="eyebrow">Downstream of a clinical decision</p><h1>Coordinate Maya&apos;s existing knee MRI order</h1><p className="case-source">Clinician-issued order · received Aug 25 · document on file · synthetic case</p></div>
         <div className="constraints" aria-label="Appointment constraints"><span>Weekdays after 3 PM</span><span>Wheelchair access</span><span>≤ 30 min</span><span>≤ $75</span></div>
       </section>
 
-      {walkthrough && (
+      {!walkthroughSeen && !walkthroughDismissed && (
         <section className="walkthrough" aria-label="Quick orientation">
-          <div><span>1</span><p><strong>Ask your browser agent</strong>Use the prompt in the right rail.</p></div>
+          <div><span>1</span><p><strong>Ask your browser agent</strong>Use the prompt below.</p></div>
           <div><span>2</span><p><strong>Watch shared state</strong>Tools update this same workspace.</p></div>
-          <div><span>3</span><p><strong>You approve consequences</strong>The commit tool stays hidden until approval.</p></div>
-          <button onClick={() => { setWalkthrough(false); window.localStorage.setItem('referralarc-walkthrough', 'seen'); }}>Got it</button>
+          <div><span>3</span><p><strong>You authorize consequences</strong>The commit tool stays hidden until authorization.</p></div>
+          <button onClick={() => { setWalkthroughDismissed(true); window.localStorage.setItem('referralarc-walkthrough', 'seen'); window.requestAnimationFrame(() => workspaceRef.current?.focus()); }}>Got it</button>
         </section>
       )}
 
-      <div className="workspace-grid" id="care-workspace">
+      <div ref={workspaceRef} className="workspace-grid" id="care-workspace" tabIndex={-1}>
         <CareJourney state={state} />
         <section className="panel care-panel">
           <nav className="workspace-tabs" aria-label="Care workspace sections">
@@ -427,7 +537,7 @@ export default function ReferralArcApp() {
           <div className="care-scroll">
             <div id="options"><OptionCard state={state} onSave={save} /></div>
             {state.selectedLocationId && <div id="prepare"><Preparation state={state} onDraft={draft} onPrepare={prepare} /></div>}
-            <ApprovalCard state={state} onApprove={approve} onReject={reject} />
+            <ApprovalCard state={state} supported={supported} commitAvailable={activeTools.includes('commit_booking')} onApprove={approve} onReject={reject} onCommit={commit} />
             <div id="receipt"><Receipt state={state} /></div>
             <details className="audit-history">
               <summary>State version history <span>{state.history.length}</span></summary>
@@ -435,18 +545,18 @@ export default function ReferralArcApp() {
             </details>
           </div>
         </section>
-        <CapabilityRail supported={supported} activeTools={activeTools} activities={activities} events={events} />
+        <CapabilityRail state={state} supported={supported} activeTools={activeTools} activities={activities} events={events} />
       </div>
 
       {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
       {promptDrawer && (
         <div className="drawer-backdrop" onMouseDown={() => setPromptDrawer(false)}>
-          <aside className="prompt-drawer" role="dialog" aria-modal="true" aria-labelledby="prompt-title" onMouseDown={(event) => event.stopPropagation()}>
+          <aside ref={promptDialogRef} className="prompt-drawer" role="dialog" aria-modal="true" aria-labelledby="prompt-title" aria-describedby="prompt-note" onMouseDown={(event) => event.stopPropagation()}>
             <div><p className="eyebrow">Try with your browser agent</p><h2 id="prompt-title">Example prompts</h2><button aria-label="Close example prompts" onClick={() => setPromptDrawer(false)}>×</button></div>
-            {[GOLDEN_PROMPT, 'Compare Northline and Harborlight, including administrative tradeoffs.', 'What is missing before a booking can be prepared?', 'Explain which tool became available after I approved.'].map((prompt) => (
+            {[GOLDEN_PROMPT, 'Compare Northline and Harborlight, including administrative tradeoffs.', 'What is missing before a booking can be prepared?', COMMIT_PROMPT].map((prompt) => (
               <button className="copy-prompt" key={prompt} onClick={() => navigator.clipboard.writeText(prompt)}><span>{prompt}</span><small>Copy</small></button>
             ))}
-            <p className="drawer-note">The agent is ChatGPT/Codex in the browser. ReferralArc does not embed a second chatbot.</p>
+            <p className="drawer-note" id="prompt-note">The agent is ChatGPT/Codex in the browser. ReferralArc does not embed a second chatbot.</p>
           </aside>
         </div>
       )}

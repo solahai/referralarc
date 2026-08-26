@@ -7,13 +7,13 @@ export const metadata: Metadata = {
     default: 'ReferralArc — Human-governed care coordination',
     template: '%s · ReferralArc',
   },
-  description: 'A fictional healthcare coordination workspace where people and browser agents plan together through state-aware WebMCP tools.',
+  description: 'A human-governed WebMCP workspace for the administrative handoff after a clinician has ordered care.',
   applicationName: 'ReferralArc',
   alternates: { canonical: '/' },
   icons: { icon: '/favicon.svg' },
   openGraph: {
     title: 'ReferralArc — Human-governed care coordination',
-    description: 'A person and a browser agent share one auditable referral workspace. The human controls the consequential action.',
+    description: 'After a clinician orders care, a person and browser agent coordinate the next step while human authorization controls confirmation.',
     type: 'website',
     url: '/',
     siteName: 'ReferralArc',
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: 'ReferralArc — Human-governed care coordination',
-    description: 'A person and a browser agent share one auditable referral workspace.',
+    description: 'A clinician orders care; a person and browser agent coordinate the administrative handoff.',
     images: ['/og.png'],
   },
 };

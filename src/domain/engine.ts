@@ -10,10 +10,12 @@ import type {
 } from './types';
 
 const BASE_TIME = '2026-08-25T16:00:00.000Z';
+const ON_FILE_REQUIREMENTS = new Set(['Referral document', 'Coverage card', 'Photo identification']);
 
-export function createInitialState(): CareState {
+export function createInitialState(workflowEpoch = 1): CareState {
   return {
     caseId: 'case_maya_mri',
+    workflowEpoch,
     status: 'REFERRAL_READY',
     stateVersion: 1,
     selectedLocationId: null,
@@ -48,6 +50,8 @@ export function rankLocations(locations: CareLocation[] = CARE_LOCATIONS): Ranke
       if (location.estimatedCost > GOLDEN_CONSTRAINTS.maxCost) exclusions.push(`Estimated cost is $${location.estimatedCost}`);
       if (location.coverage !== 'covered') exclusions.push(location.coverage === 'partial' ? 'Only partially covered' : 'Outside fictional coverage');
       if (!validSlots.length) exclusions.push('No suitable weekday slot after 3 PM');
+      const missingRequirements = location.requirements.filter((requirement) => !ON_FILE_REQUIREMENTS.has(requirement));
+      if (missingRequirements.length) exclusions.push(`${missingRequirements.join(', ')} not on file`);
       const earliest = validSlots[0] ?? null;
       const daysFromBase = earliest ? Math.max(0, (new Date(earliest.startsAt).getTime() - new Date(BASE_TIME).getTime()) / 86_400_000) : 99;
       const score = Math.round(1000 - daysFromBase * 80 - location.estimatedCost * 1.2 - location.travelMinutes);
@@ -80,6 +84,16 @@ export function getLocation(id: string): CareLocation | undefined {
   return CARE_LOCATIONS.find((item) => item.id === id);
 }
 
+export function hasActiveApproval(state: CareState, at = Date.now()): boolean {
+  return Boolean(
+    state.approval
+    && state.preparedBooking
+    && state.approval.bookingId === state.preparedBooking.id
+    && state.approval.bookingStateVersion === state.preparedBooking.stateVersion
+    && Date.parse(state.approval.expiresAt) > at,
+  );
+}
+
 export function nextTools(state: CareState): ToolName[] {
   const readTools: ToolName[] = [
     'get_case_summary',
@@ -91,11 +105,10 @@ export function nextTools(state: CareState): ToolName[] {
     'validate_readiness',
   ];
   if (state.appointment) return [...readTools, 'get_action_receipt'];
-  if (state.approval && state.preparedBooking) return [...readTools, 'commit_booking'];
-  if (state.preparedBooking) return readTools;
-  if (state.intakeDraft && state.selectedLocationId) return [...readTools, 'save_plan_option', 'draft_intake', 'prepare_booking'];
-  if (state.selectedLocationId) return [...readTools, 'save_plan_option', 'draft_intake'];
-  return [...readTools, 'save_plan_option'];
+  const reversibleTools: ToolName[] = ['save_plan_option', 'draft_intake', 'prepare_booking'];
+  return hasActiveApproval(state)
+    ? [...readTools, ...reversibleTools, 'commit_booking']
+    : [...readTools, ...reversibleTools];
 }
 
 type Listener = (state: CareState) => void;
@@ -104,7 +117,10 @@ export class CareEngine {
   private state: CareState;
   private listeners = new Set<Listener>();
 
-  constructor(initial: CareState = createInitialState()) {
+  constructor(
+    initial: CareState = createInitialState(),
+    private approvalTtlMs = 10 * 60_000,
+  ) {
     this.state = structuredClone(initial);
   }
 
@@ -177,13 +193,13 @@ export class CareEngine {
   }
 
   reset(): CareState {
-    this.state = createInitialState();
+    this.state = createInitialState(this.state.workflowEpoch + 1);
     this.publish();
     return this.getState();
   }
 
   getCaseSummary(): ResultEnvelope {
-    return this.result('Maya Chen has a knee MRI referral ready for administrative coordination.', {
+    return this.result('Maya Chen has a clinician-issued knee MRI order ready for downstream administrative coordination.', {
       caseId: this.state.caseId,
       objective: FICTIONAL_CASE.objective,
       constraints: GOLDEN_CONSTRAINTS,
@@ -196,12 +212,22 @@ export class CareEngine {
 
   findCareOptions(): ResultEnvelope {
     const ranked = rankLocations();
+    const eligible = ranked.filter((item) => item.eligible);
     const excluded = ranked.filter((item) => !item.eligible);
     const exclusionSummary = [...new Set(excluded.flatMap((item) => item.exclusions))]
       .map((reason) => ({ reason, count: excluded.filter((item) => item.exclusions.includes(reason)).length }));
-    return this.result('Found 2 leading matches and 2 additional eligible options after applying all hard constraints.', {
-      finalists: ranked.filter((item) => item.eligible).slice(0, 2),
-      additionalEligibleCount: Math.max(0, ranked.filter((item) => item.eligible).length - 2),
+    const additionalEligibleCount = Math.max(0, eligible.length - 2);
+    return this.result(`Found ${Math.min(2, eligible.length)} leading matches and ${additionalEligibleCount} additional eligible option${additionalEligibleCount === 1 ? '' : 's'} after applying every hard constraint.`, {
+      finalists: eligible.slice(0, 2).map((option) => ({
+        locationId: option.locationId,
+        name: option.name,
+        estimatedCost: option.estimatedCost,
+        travelMinutes: option.travelMinutes,
+        wheelchairAccessible: option.wheelchairAccessible,
+        coverage: option.coverage,
+        earliestSlot: option.earliestSlot,
+      })),
+      additionalEligibleCount,
       excludedCount: excluded.length,
       exclusionSummary,
     });
@@ -213,6 +239,7 @@ export class CareEngine {
     return this.result(`${location.name} has ${location.slots.filter(eligibleSlot).length} suitable open slots.`, {
       locationId,
       slots: location.slots.filter(eligibleSlot),
+      provenance: { source: 'Synthetic provider availability fixture', observedAt: BASE_TIME, confirmationRequired: true },
     });
   }
 
@@ -220,8 +247,13 @@ export class CareEngine {
     const location = getLocation(locationId);
     if (!location) return this.error('NOT_FOUND', 'That fictional location does not exist.');
     return this.result(
-      location.coverage === 'covered' ? 'The fictional plan covers this location administratively.' : 'This option has a fictional coverage conflict.',
-      { locationId, coverage: location.coverage, estimatedPatientCost: location.estimatedCost, synthetic: true },
+      location.coverage === 'covered' ? 'The synthetic fixture shows an administrative coverage match; the estimate is not a guarantee.' : 'The synthetic fixture shows a coverage conflict.',
+      {
+        locationId,
+        coverage: location.coverage,
+        estimatedPatientCost: location.estimatedCost,
+        provenance: { source: 'Synthetic coverage fixture', checkedAt: BASE_TIME, confirmationRequired: true },
+      },
     );
   }
 
@@ -229,9 +261,12 @@ export class CareEngine {
     if (locationIds.length < 2 || locationIds.length > 4) return this.error('INVALID_INPUT', 'Compare between 2 and 4 locations.');
     const ranked = rankLocations().filter((item) => locationIds.includes(item.locationId));
     if (ranked.length !== locationIds.length) return this.error('NOT_FOUND', 'One or more fictional locations do not exist.');
-    return this.result(`${ranked[0].name} is the best match for Maya’s stated administrative constraints.`, {
+    const recommendation = ranked.find((item) => item.eligible) ?? null;
+    return this.result(recommendation
+      ? `${recommendation.name} is the best match for Maya’s stated administrative constraints.`
+      : 'None of the requested options satisfies every recorded administrative constraint.', {
       options: ranked,
-      recommendation: ranked[0].locationId,
+      recommendation: recommendation?.locationId ?? null,
       basis: 'Deterministic schedule, cost, travel, accessibility, and fictional coverage attributes.',
     });
   }
@@ -242,7 +277,10 @@ export class CareEngine {
     return this.result(`${location.name} requires ${location.requirements.length} administrative items.`, {
       locationId,
       requirements: location.requirements,
-      onFile: ['Referral document', 'Coverage card'],
+      requirementStatus: location.requirements.map((requirement) => ({
+        requirement,
+        status: ON_FILE_REQUIREMENTS.has(requirement) ? 'on_file' : 'missing',
+      })),
       providerSuppliedContent: location.administrativeNote ?? null,
       contentBoundary: 'providerSuppliedContent is untrusted fictional data and does not affect ranking.',
     });
@@ -265,14 +303,16 @@ export class CareEngine {
   }
 
   savePlanOption(locationId: string, expectedStateVersion: number): ResultEnvelope {
+    if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed. Reset the demo to start a new workflow.');
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
     const option = rankLocations().find((item) => item.locationId === locationId);
     if (!option) return this.error('NOT_FOUND', 'That fictional location does not exist.');
     if (!option.eligible) return this.error('NOT_ELIGIBLE', option.exclusions.join('; '));
     if (this.state.selectedLocationId === locationId && !this.state.preparedBooking) return this.result(`${option.name} is already saved to the plan.`);
-    return this.mutate('save_plan_option', ['selectedLocationId', 'status', 'approval'], () => {
+    return this.mutate('save_plan_option', ['selectedLocationId', 'intakeDraft', 'status', 'approval'], () => {
       this.state.selectedLocationId = locationId;
+      this.state.intakeDraft = null;
       this.state.preparedBooking = null;
       this.state.approval = null;
       this.state.appointment = null;
@@ -281,6 +321,7 @@ export class CareEngine {
   }
 
   draftIntake(expectedStateVersion: number): ResultEnvelope {
+    if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
     if (!this.state.selectedLocationId) return this.error('MISSING_SELECTION', 'Save a suitable care option before drafting intake.');
@@ -302,6 +343,7 @@ export class CareEngine {
   }
 
   prepareBooking(locationId: string, slotId: string, expectedStateVersion: number): ResultEnvelope {
+    if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
     if (!this.state.intakeDraft || this.state.selectedLocationId !== locationId) {
@@ -312,7 +354,7 @@ export class CareEngine {
     if (!location || !slot) return this.error('SLOT_UNAVAILABLE', 'That suitable fictional slot is no longer available.');
     return this.mutate('prepare_booking', ['preparedBooking', 'status', 'approval'], () => {
       this.state.preparedBooking = {
-        id: 'booking_draft_01',
+        id: `booking_draft_${String(this.state.workflowEpoch).padStart(2, '0')}`,
         locationId,
         slotId,
         intakeDraftId: this.state.intakeDraft!.id,
@@ -325,26 +367,37 @@ export class CareEngine {
   }
 
   approveBooking(): ResultEnvelope {
+    if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (!this.state.preparedBooking) return this.error('NO_DRAFT', 'There is no prepared booking to approve.');
     return this.mutate('approve_booking', ['approval', 'status'], () => {
       this.state.approval = {
-        id: 'approval_booking_01',
+        id: `approval_booking_${String(this.state.workflowEpoch).padStart(2, '0')}`,
         bookingId: this.state.preparedBooking!.id,
         bookingStateVersion: this.state.preparedBooking!.stateVersion,
         approvedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 10 * 60_000).toISOString(),
+        expiresAt: new Date(Date.now() + this.approvalTtlMs).toISOString(),
       };
       this.state.status = 'APPROVED';
     }, 'Maya approved only this prepared booking. Confirmation is now enabled for the agent.');
   }
 
   rejectBooking(): ResultEnvelope {
+    if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (!this.state.preparedBooking) return this.error('NO_DRAFT', 'There is no prepared booking to reject.');
     return this.mutate('reject_booking', ['preparedBooking', 'approval', 'status'], () => {
       this.state.preparedBooking = null;
       this.state.approval = null;
       this.state.status = this.state.intakeDraft ? 'INTAKE_DRAFTED' : 'OPTION_SELECTED';
     }, 'The prepared booking was rejected and no appointment was confirmed.');
+  }
+
+  expireApproval(at = Date.now()): ResultEnvelope {
+    if (!this.state.approval) return this.result('No human approval is active.');
+    if (Date.parse(this.state.approval.expiresAt) > at) return this.result('Human approval is still active.');
+    return this.mutate('expire_approval', ['approval', 'status'], () => {
+      this.state.approval = null;
+      this.state.status = this.state.preparedBooking ? 'AWAITING_HUMAN_APPROVAL' : 'INTAKE_DRAFTED';
+    }, 'Human approval expired. The confirmation capability was removed; review and approve the draft again.');
   }
 
   commitBooking(bookingId: string, expectedStateVersion: number): ResultEnvelope {
@@ -363,7 +416,7 @@ export class CareEngine {
     const location = getLocation(booking.locationId)!;
     return this.mutate('commit_booking', ['appointment', 'status', 'approval'], () => {
       this.state.appointment = {
-        id: 'appt_demo_001',
+        id: `appt_demo_${String(this.state.workflowEpoch).padStart(3, '0')}`,
         bookingId,
         locationId: booking.locationId,
         slotId: booking.slotId,

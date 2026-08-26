@@ -13,15 +13,12 @@ describe('state-aware WebMCP registration', () => {
     registry.start();
     await settle();
     expect(context.tools.has('commit_booking')).toBe(false);
-    expect(context.tools.has('prepare_booking')).toBe(false);
+    expect(context.tools.has('draft_intake')).toBe(true);
+    expect(context.tools.has('prepare_booking')).toBe(true);
 
     await context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 });
     await settle();
-    expect(context.tools.has('draft_intake')).toBe(true);
-
     await context.execute('draft_intake', { expectedStateVersion: 2 });
-    await settle();
-    expect(context.tools.has('prepare_booking')).toBe(true);
 
     await context.execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 });
     await settle();
@@ -68,6 +65,42 @@ describe('state-aware WebMCP registration', () => {
     const result = await call as { ok: boolean; error?: { code: string } };
     expect(result.error?.code).toBe('CANCELLED');
     expect(engine.getState().stateVersion).toBe(1);
+    registry.stop();
+  });
+
+  it('expires approval and unregisters commit without an attempted invocation', async () => {
+    const engine = new CareEngine(undefined, 15);
+    const context = new MockModelContext();
+    const registry = new WebMCPRegistry(engine, context);
+    registry.start();
+    await settle();
+    engine.savePlanOption('northline', 1);
+    engine.draftIntake(2);
+    engine.prepareBooking('northline', 'northline_slot_1', 3);
+    engine.approveBooking();
+    await settle();
+    expect(context.tools.has('commit_booking')).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 40));
+    expect(context.tools.has('commit_booking')).toBe(false);
+    expect(engine.getState().approval).toBeNull();
+    expect(engine.getState().status).toBe('AWAITING_HUMAN_APPROVAL');
+    registry.stop();
+  });
+
+  it('reports only successful native registrations', async () => {
+    const engine = new CareEngine();
+    const context = new MockModelContext();
+    const original = context.registerTool.bind(context);
+    context.registerTool = async (tool, options) => {
+      if (tool.name === 'get_case_summary') throw new DOMException('Rejected by test browser.', 'NotAllowedError');
+      return original(tool, options);
+    };
+    const registry = new WebMCPRegistry(engine, context);
+    registry.start();
+    await settle();
+    const snapshot = registry.snapshot();
+    expect(snapshot.activeTools).not.toContain('get_case_summary');
+    expect(snapshot.events.some((event) => event.toolName === 'get_case_summary' && event.action === 'failed')).toBe(true);
     registry.stop();
   });
 });

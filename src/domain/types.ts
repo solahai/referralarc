@@ -115,6 +115,7 @@ export interface HistoryEntry {
 
 export interface CareState {
   caseId: 'case_maya_mri';
+  workflowEpoch: number;
   status: WorkflowStatus;
   stateVersion: number;
   selectedLocationId: string | null;
@@ -154,7 +155,7 @@ export interface ToolActivity {
 export interface ToolEvent {
   id: string;
   toolName: ToolName;
-  action: 'added' | 'removed';
+  action: 'added' | 'removed' | 'failed';
   timestamp: string;
   reason: string;
 }

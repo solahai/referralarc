@@ -1,5 +1,5 @@
 import type { CareEngine } from '@/src/domain/engine';
-import type { CareState, ResultEnvelope, ToolActivity, ToolEvent, ToolName } from '@/src/domain/types';
+import type { ResultEnvelope, ToolActivity, ToolEvent, ToolName } from '@/src/domain/types';
 import { TOOL_DEFINITIONS, validateToolInput, type ToolDefinition } from './tool-contracts';
 
 export interface ModelContextLike {
@@ -33,12 +33,15 @@ type Listener = (snapshot: RegistrySnapshot) => void;
 
 export class WebMCPRegistry {
   private registrations = new Map<ToolName, AbortController>();
+  private pendingRegistrations = new Map<ToolName, AbortController>();
   private listeners = new Set<Listener>();
   private activities: ToolActivity[] = [];
   private events: ToolEvent[] = [];
   private stopped = false;
   private queue = Promise.resolve();
   private unsubscribeEngine: (() => void) | null = null;
+  private expiryTimer: ReturnType<typeof setTimeout> | null = null;
+  private sequence = 0;
 
   constructor(
     private engine: CareEngine,
@@ -50,14 +53,17 @@ export class WebMCPRegistry {
   }
 
   start(): void {
-    this.unsubscribeEngine = this.engine.subscribe((state) => this.reconcile(state));
-    this.reconcile(this.engine.getState());
+    this.unsubscribeEngine = this.engine.subscribe(() => this.reconcile());
+    this.reconcile();
   }
 
   stop(): void {
     this.stopped = true;
     this.unsubscribeEngine?.();
+    if (this.expiryTimer) clearTimeout(this.expiryTimer);
+    this.pendingRegistrations.forEach((controller) => controller.abort());
     this.registrations.forEach((controller) => controller.abort());
+    this.pendingRegistrations.clear();
     this.registrations.clear();
     this.emit();
   }
@@ -71,7 +77,7 @@ export class WebMCPRegistry {
   snapshot(): RegistrySnapshot {
     return {
       supported: this.supported,
-      activeTools: TOOL_DEFINITIONS.filter((tool) => tool.available(this.engine.getState())).map((tool) => tool.name),
+      activeTools: [...this.registrations.keys()],
       activities: [...this.activities],
       events: [...this.events],
     };
@@ -82,10 +88,19 @@ export class WebMCPRegistry {
     this.listeners.forEach((listener) => listener(snapshot));
   }
 
-  private reconcile(state: CareState): void {
+  private desiredNames(): Set<ToolName> {
+    const state = this.engine.getState();
+    return new Set(TOOL_DEFINITIONS.filter((tool) => tool.available(state)).map((tool) => tool.name));
+  }
+
+  private reconcile(): void {
     this.queue = this.queue.then(async () => {
       if (this.stopped) return;
-      const desired = new Set(TOOL_DEFINITIONS.filter((tool) => tool.available(state)).map((tool) => tool.name));
+      if (this.expiryTimer) {
+        clearTimeout(this.expiryTimer);
+        this.expiryTimer = null;
+      }
+      let desired = this.desiredNames();
       for (const [name, controller] of this.registrations) {
         if (!desired.has(name)) {
           controller.abort();
@@ -94,12 +109,15 @@ export class WebMCPRegistry {
         }
       }
       if (!this.modelContext) {
+        this.scheduleApprovalExpiry();
         this.emit();
         return;
       }
       for (const definition of TOOL_DEFINITIONS) {
-        if (!desired.has(definition.name) || this.registrations.has(definition.name)) continue;
+        desired = this.desiredNames();
+        if (!desired.has(definition.name) || this.registrations.has(definition.name) || this.pendingRegistrations.has(definition.name)) continue;
         const controller = new AbortController();
+        this.pendingRegistrations.set(definition.name, controller);
         try {
           // Direct native WebMCP registration. The registration signal is the
           // current-spec unregistration mechanism; there is no unregisterTool().
@@ -113,19 +131,47 @@ export class WebMCPRegistry {
           }, {
             signal: controller.signal,
           });
+          this.pendingRegistrations.delete(definition.name);
+          const stillAvailable = definition.available(this.engine.getState());
+          if (this.stopped || controller.signal.aborted || !stillAvailable) {
+            controller.abort();
+            continue;
+          }
           this.registrations.set(definition.name, controller);
           this.recordEvent(definition.name, 'added', 'Shared page state permits this capability.');
-        } catch {
+        } catch (error) {
+          this.pendingRegistrations.delete(definition.name);
           controller.abort();
+          this.recordEvent(definition.name, 'failed', error instanceof Error ? error.message : 'Native registration failed.');
         }
       }
+      desired = this.desiredNames();
+      for (const [name, controller] of this.registrations) {
+        if (!desired.has(name)) {
+          controller.abort();
+          this.registrations.delete(name);
+          this.recordEvent(name, 'removed', 'Latest shared page state no longer permits this capability.');
+        }
+      }
+      this.scheduleApprovalExpiry();
       this.emit();
     });
   }
 
+  private scheduleApprovalExpiry(): void {
+    const approval = this.engine.getState().approval;
+    if (!approval) return;
+    const remaining = Date.parse(approval.expiresAt) - Date.now();
+    if (remaining > 0) {
+      this.expiryTimer = setTimeout(() => this.engine.expireApproval(), Math.min(remaining + 10, 2_147_483_647));
+    } else {
+      this.engine.expireApproval();
+    }
+  }
+
   private recordEvent(toolName: ToolName, action: ToolEvent['action'], reason: string): void {
     this.events = [{
-      id: `evt_${Date.now()}_${toolName}`,
+      id: `evt_${Date.now()}_${++this.sequence}_${toolName}`,
       toolName,
       action,
       timestamp: new Date().toISOString(),
@@ -136,7 +182,7 @@ export class WebMCPRegistry {
   async run(definition: ToolDefinition, rawInput: unknown, signal: AbortSignal): Promise<ResultEnvelope> {
     const started = performance.now();
     const activity: ToolActivity = {
-      id: `act_${Date.now()}_${definition.name}`,
+      id: `act_${Date.now()}_${++this.sequence}_${definition.name}`,
       toolName: definition.name,
       title: definition.title,
       kind: definition.kind,
@@ -147,9 +193,37 @@ export class WebMCPRegistry {
     this.emit();
     try {
       signal.throwIfAborted();
+      if (!definition.available(this.engine.getState())) {
+        const unavailable: ResultEnvelope = {
+          ok: false,
+          summary: 'This capability is not available in the current workflow state.',
+          stateVersion: this.engine.getState().stateVersion,
+          changed: [],
+          blockers: ['Re-read the case and use a currently registered action.'],
+          nextAvailableActions: this.snapshot().activeTools,
+          error: { code: 'TOOL_UNAVAILABLE', message: 'Capability is unavailable in the current workflow state.' },
+        };
+        Object.assign(activity, {
+          status: 'error' as const,
+          durationMs: Math.round(performance.now() - started),
+          summary: unavailable.summary,
+        });
+        this.activities = [...this.activities];
+        this.emit();
+        return unavailable;
+      }
       const input = validateToolInput(definition, rawInput);
-      const result = await definition.execute(this.engine, input, signal);
-      const output = JSON.stringify(result);
+      let result = await definition.execute(this.engine, input, signal);
+      let output = JSON.stringify(result);
+      if (output.length > 1500 && result.ok && definition.kind !== 'read') {
+        result = {
+          ...result,
+          summary: result.summary.slice(0, 500),
+          data: undefined,
+          blockers: [],
+        };
+        output = JSON.stringify(result);
+      }
       if (output.length > 1500) {
         Object.assign(activity, {
           status: 'error' as const,
