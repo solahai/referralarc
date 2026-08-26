@@ -407,7 +407,7 @@ function CapabilityRail({ state, supported, activeTools, activities, events }: {
                 );
               })}
             </ul>
-            {!supported && <div className="fallback-boundary" aria-label="WebMCP capability boundary preview"><p className="eyebrow">Supported-browser behavior</p><strong>Reversible tools register first.</strong><span><code>commit_booking</code> remains absent until exact, time-limited human authorization.</span></div>}
+            {!supported && <div className="fallback-boundary" aria-label="WebMCP capability boundary preview"><p className="eyebrow">Supported-browser behavior</p><strong>{state.approval ? 'Exact confirmation is authorized.' : 'Reversible tools register first.'}</strong><span>{state.approval ? <><code>commit_booking</code> would now be registered for this exact draft.</> : <><code>commit_booking</code> remains absent until exact, time-limited human authorization.</>}</span></div>}
             {supported && !activeTools.includes('commit_booking') && <div className="gated-tool"><span className="tool-kind commit">commit</span><div><strong>Not registered: confirm booking</strong><code>commit_booking</code></div><b>Human locked</b></div>}
             {registrationEvent && <div className={`registration-event ${registrationEvent.action}`}><span>{registrationEvent.action === 'added' ? '+' : registrationEvent.action === 'removed' ? '−' : '!'}</span><p><strong>{registrationEvent.toolName}</strong> {registrationEvent.action}. {registrationEvent.reason}</p></div>}
           </div>

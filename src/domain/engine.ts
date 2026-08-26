@@ -378,7 +378,7 @@ export class CareEngine {
         expiresAt: new Date(Date.now() + this.approvalTtlMs).toISOString(),
       };
       this.state.status = 'APPROVED';
-    }, 'Maya approved only this prepared booking. Confirmation is now enabled for the agent.');
+    }, 'Confirmation is authorized for this exact draft.');
   }
 
   rejectBooking(): ResultEnvelope {
