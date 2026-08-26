@@ -38,3 +38,4 @@ The repository history begins with the completed challenge-window implementation
 - Made repeated safe agent operations idempotent and added maximum-valid comparison output-budget coverage
 - Added an exhaustive requirement-by-requirement challenge audit and tightened all judge-facing claims
 - Upgraded the compatible Next.js, React RSC, vinext, Vite, and Cloudflare stack until the full dependency audit reached zero known vulnerabilities
+- Pinned current GitHub Actions releases to immutable SHAs and made the dependency audit a required CI gate

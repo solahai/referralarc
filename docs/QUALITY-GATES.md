@@ -48,7 +48,7 @@ This document records observable gates; it does not assign ReferralArc its own j
 
 - 3 — 45 unit/contract/security tests and 8 end-to-end tests pass
 - 2 — Typecheck, lint, and production build pass
-- 2 — Full production and development dependency audit reports zero known vulnerabilities
+- 2 — Full production and development dependency audit reports zero known vulnerabilities and is enforced in CI
 - 2 — README, judge guide, demo script, and submission copy
 - 1 — Architecture diagram and challenge work log
 - 1 — Public MIT license
