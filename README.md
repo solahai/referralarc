@@ -2,7 +2,7 @@
 
 ReferralArc demonstrates **capability-lifetime consent**: a browser agent can prepare the administrative work after a clinician has ordered care, but no WebMCP tool can grant confirmation authority. In the visible demo flow, Maya reviews one exact appointment and creates a ten-minute, one-draft `commit_booking` lease. Before that review the capability is absent; after use it is removed.
 
-[Public baseline — final release pending](https://referralarc.docsplainai.chatgpt.site) · [Golden demo](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
+[Public baseline — final release pending](https://referralarc.docsplainai.chatgpt.site) · [Baseline demo — final release pending](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
 
 ![ReferralArc exact authorization lease](docs/screenshots/capability-leased-1440x900.jpg)
 
