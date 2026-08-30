@@ -47,7 +47,7 @@ ReferralArc’s differentiated contribution is capability-lifetime consent: visi
 - Deploy the exact final working release at the submitted live URL.
 - Keep the exact final source, assets, functional instructions, and detectable MIT license public.
 - Record and publish the narrated YouTube demo with audio, strictly under three minutes, and use no unlicensed marks or music.
-- Add the required four-part description, video URL, team members, representative, and all required fields to Devpost; confirm eligibility, ownership, rights, and English-language materials.
+- Add the required four-part description, video URL, team members, representative, and all required fields to Devpost; confirm eligibility, ownership, rights, English-language materials, and no prohibited Sponsor/Administrator financial or preferential support.
 - If the entrant has other submissions, confirm that each is unique and substantially different.
 - Keep the live site free and unrestricted through September 21, 2026 at 5:00 p.m. PT, and do not change the submitted materials after the submission period except as the Official Rules permit.
 

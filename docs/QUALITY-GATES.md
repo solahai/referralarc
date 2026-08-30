@@ -102,7 +102,7 @@ Status vocabulary is closed: `PASS` means current repository or local-candidate 
 - Deploy the exact final release at the submitted live URL and keep access free and unrestricted through September 21, 2026 at 5:00 p.m. PT.
 - Keep the exact final source, assets, and functional instructions public with a detectable open-source license, and comply with all third-party license and notice obligations.
 - Publish a public YouTube demonstration with audio that is strictly under three minutes and add it to Devpost.
-- Complete the four required text explanations and every required Devpost field; confirm entrant eligibility, ownership, rights, English-language materials, and the team representative when applicable.
+- Complete the four required text explanations and every required Devpost field; confirm entrant eligibility, ownership, rights, English-language materials, no prohibited Sponsor/Administrator financial or preferential support, and the team representative when applicable.
 - If the entrant has other submissions, confirm each is unique and substantially different.
 - Do not change submitted materials after the submission period ends except as the Official Rules expressly permit.
 

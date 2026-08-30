@@ -49,4 +49,5 @@ All names, providers, prices, appointments, identifiers, notes, and coverage det
 - Public source repository: https://github.com/solahai/referralarc — exact final source, assets, and run instructions published under MIT
 - Public YouTube demo: add after recording
 - Team members: add before submission
+- Entrant attestation: confirm eligibility, ownership and third-party rights, plus no prohibited Sponsor/Administrator financial or preferential support
 - License: MIT

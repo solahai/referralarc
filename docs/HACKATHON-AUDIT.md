@@ -24,6 +24,7 @@ Status key: **PASS** is present and repository-verifiable, **MANUAL** requires e
 | English entry or English translations | **PASS / MANUAL** | Product, repository, and prepared copy are English; confirm the final video, captions, and testing instructions are also English or translated. |
 | Authorized/licensed third-party code, data, music, and marks only | **PASS / WATCH** | Code is MIT-compatible and fixtures are synthetic; use no unlicensed music or third-party marks in the recording. |
 | Original/solely owned submission and compliant OSS use | **MANUAL** | Repository evidence supports new work; entrant must make the binding ownership representation. |
+| No prohibited financial or preferential support | **MANUAL** | Entrant must attest that the project was not developed or derived with financial or preferential support from the Sponsor or Administrator, as required by Official Rules §4. |
 | Free and unrestricted live access through judging end | **WATCH** | Keep the public site reachable without login through September 21, 2026 at 5:00 p.m. PT. |
 | No changes or alterations to the Submission after the deadline except as the rules permit | **WATCH** | Finalize submitted materials before the deadline. Tagging the commit is a useful internal control, not the rule itself. |
 
@@ -103,7 +104,7 @@ Remaining differentiation risk: referral scheduling is a crowded category. Every
 2. Keep this exact tagged source, its assets and functional instructions, and the visible MIT license public.
 3. Record a public YouTube video with audio from that functioning release, keep it strictly under three minutes, and avoid unlicensed marks or music.
 4. Submit the four required text explanations plus the live, repository, and video URLs and all representative/team fields in Devpost.
-5. Confirm eligibility, ownership, third-party rights, English-language materials, and the appointed representative when applicable. If there are other submissions, confirm each is unique and substantially different.
+5. Confirm eligibility, ownership, third-party rights, English-language materials, no prohibited Sponsor/Administrator financial or preferential support, and the appointed representative when applicable. If there are other submissions, confirm each is unique and substantially different.
 6. Do not change or alter the submitted materials after the submission period except as the Official Rules expressly permit.
 
 ## Internal high-value evidence and controls
