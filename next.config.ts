@@ -20,7 +20,10 @@ const nextConfig: NextConfig = {
       source: '/(.*)',
       headers: [
         { key: 'Content-Security-Policy', value: contentSecurityPolicy },
-        { key: 'Permissions-Policy', value: 'tools=(self), camera=(), microphone=(), geolocation=()' },
+        // WebMCP's tools policy already defaults to same-origin. Omitting the
+        // origin-trial-controlled token avoids warnings in browsers that do
+        // not recognize it while preserving the secure same-origin default.
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         { key: 'Origin-Agent-Cluster', value: '?1' },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'X-Content-Type-Options', value: 'nosniff' },

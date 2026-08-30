@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Download } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 declare global {
@@ -6,7 +6,15 @@ declare global {
     __webmcpTools?: Map<string, {
       execute: (input: Record<string, unknown>, context: { signal: AbortSignal }) => Promise<unknown>;
     }>;
+    __printed?: boolean;
   }
+}
+
+async function readDownload(download: Download): Promise<Record<string, unknown>> {
+  const stream = await download.createReadStream();
+  let body = '';
+  for await (const chunk of stream) body += chunk.toString();
+  return JSON.parse(body) as Record<string, unknown>;
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -29,20 +37,24 @@ test.beforeEach(async ({ page }, testInfo) => {
 test('completes the golden agent + human interleaving flow', async ({ page }) => {
   await page.goto('/demo');
   await expect(page.locator('main[data-hydrated="true"]')).toBeVisible();
-  await expect(page.locator('.support-card').getByText('Native WebMCP detected')).toBeVisible();
+  await expect(page.locator('.support-card').getByText('Native WebMCP verified')).toBeVisible();
   await expect(page.locator('.commit-node')).toContainText('Absent');
 
   const execute = (name: string, input: Record<string, unknown>) => page.evaluate(async ({ name, input }) => {
     const tool = window.__webmcpTools?.get(name);
     if (!tool) throw new Error(`Missing tool: ${name}`);
-    return tool.execute(input, { signal: new AbortController().signal });
+    const raw = await tool.execute(input, { signal: new AbortController().signal });
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
   }, { name, input });
 
   await execute('get_case_summary', {});
   await execute('find_care_options', {});
   await execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 });
   await execute('draft_intake', { expectedStateVersion: 2 });
-  await execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 });
+  const prepared = await execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 }) as {
+    data: { bookingId: string };
+  };
+  expect(prepared.data.bookingId).toMatch(/^booking_draft_/);
 
   await expect(page.getByRole('heading', { name: 'Review before enabling confirmation' })).toBeVisible();
   expect(await page.evaluate(() => window.__webmcpTools?.has('commit_booking'))).toBe(false);
@@ -51,7 +63,15 @@ test('completes the golden agent + human interleaving flow', async ({ page }) =>
   await expect.poll(() => page.evaluate(() => window.__webmcpTools?.has('commit_booking'))).toBe(true);
   await expect(page.locator('.commit-node')).toContainText('Registered now');
 
-  await execute('commit_booking', { bookingId: 'booking_draft_01', expectedStateVersion: 5 });
+  const authorized = await execute('get_case_summary', {}) as {
+    stateVersion: number;
+    data: { preparedBooking: { bookingId: string }; authorization: { active: boolean } };
+  };
+  expect(authorized.data.authorization.active).toBe(true);
+  await execute('commit_booking', {
+    bookingId: authorized.data.preparedBooking.bookingId,
+    expectedStateVersion: authorized.stateVersion,
+  });
   await expect(page.getByText('Fictional appointment confirmed')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.__webmcpTools?.has('commit_booking'))).toBe(false);
   await expect(page.locator('.commit-node')).toContainText('Consumed + removed');
@@ -79,13 +99,13 @@ test('human fallback completes without WebMCP, resets, and fits mobile', async (
 test('alternative selection stays visually truthful and uses an eligible slot', async ({ page }) => {
   await page.goto('/demo');
   await expect(page.locator('main[data-hydrated="true"]')).toBeVisible();
-  const harborlight = page.getByRole('article').filter({ hasText: 'Harborlight Diagnostics' });
-  await harborlight.getByRole('button', { name: 'Save option' }).click();
+  const thimblefern = page.getByRole('article').filter({ hasText: 'Thimblefern Diagnostics' });
+  await thimblefern.getByRole('button', { name: 'Save option' }).click();
   await expect(page.getByText('Selected option')).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Harborlight Diagnostics' }).first()).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Thimblefern Diagnostics' }).first()).toBeVisible();
   await page.getByRole('button', { name: 'Draft from profile' }).click();
   await page.getByRole('button', { name: 'Prepare booking' }).click();
-  await expect(page.locator('.approval-card').getByText('Tue, Sep 1, 4:20 PM', { exact: true })).toBeVisible();
+  await expect(page.locator('.approval-card').getByText(/Tue, Oct 13, 4:20 PM EDT/)).toBeVisible();
 });
 
 test('excluded options expose bounded provenance and inert hostile text', async ({ page }) => {
@@ -134,13 +154,133 @@ test('landing and demo have no serious accessibility violations', async ({ page 
   }
 });
 
-test('landing and demo stay within every reviewed release viewport', async ({ page }) => {
-  for (const width of [390, 768, 1280, 1440]) {
-    await page.setViewportSize({ width, height: width < 700 ? 844 : 900 });
+test('landing and demo produce no app-authored runtime or console errors', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(`page: ${error.message}`));
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(`console: ${message.text()}`);
+  });
+  for (const path of ['/', '/demo']) {
+    await page.goto(path);
+    if (path === '/demo') await expect(page.locator('main[data-hydrated="true"]')).toBeVisible();
+  }
+  expect(errors).toEqual([]);
+});
+
+test('approved and receipt states without WebMCP have no serious accessibility violations', async ({ page }) => {
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Save to care plan' }).click();
+  await page.getByRole('button', { name: 'Draft from profile' }).click();
+  await page.getByRole('button', { name: 'Prepare booking' }).click();
+  await page.getByRole('button', { name: 'Authorize this exact appointment' }).click();
+  let results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
+  await page.getByRole('button', { name: 'Confirm authorized booking' }).click();
+  results = await new AxeBuilder({ page }).analyze();
+  expect(results.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
+});
+
+test('all exports are distinct, downloadable, and internally coherent', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.print = () => { window.__printed = true; };
+  });
+  await page.goto('/demo');
+  await page.getByRole('button', { name: 'Save to care plan' }).click();
+  await page.getByRole('button', { name: 'Draft from profile' }).click();
+  await page.getByRole('button', { name: 'Prepare booking' }).click();
+  const menu = page.locator('.download-menu');
+  await menu.locator('summary').click();
+  const items = menu.getByRole('button');
+  await expect(items).toHaveCount(3);
+  const boxes = await items.evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect();
+    return { top: box.top, bottom: box.bottom };
+  }));
+  expect(boxes[0].bottom).toBeLessThanOrEqual(boxes[1].top);
+  expect(boxes[1].bottom).toBeLessThanOrEqual(boxes[2].top);
+
+  const careDownload = page.waitForEvent('download');
+  await items.nth(0).click();
+  const carePlan = await readDownload(await careDownload);
+  expect(carePlan).toMatchObject({ synthetic: true, workflowStatus: 'AWAITING_HUMAN_APPROVAL' });
+
+  await menu.locator('summary').click();
+  const fhirDownload = page.waitForEvent('download');
+  await menu.getByRole('button', { name: 'FHIR-shaped Bundle · synthetic' }).click();
+  const bundle = await readDownload(await fhirDownload) as {
+    resourceType: string;
+    entry: Array<{ fullUrl: string; resource: Record<string, unknown> }>;
+  };
+  expect(bundle.resourceType).toBe('Bundle');
+  expect(bundle.entry.every((entry) => /^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(entry.fullUrl))).toBe(true);
+  const appointment = bundle.entry.find((entry) => entry.resource.resourceType === 'Appointment')!.resource as {
+    status: string;
+    basedOn: Array<{ reference: string }>;
+    participant: Array<{ actor: { reference: string }; status: string }>;
+  };
+  expect(appointment.status).toBe('proposed');
+  expect(appointment.basedOn[0].reference).toMatch(/^urn:uuid:/);
+  expect(appointment.participant.every((item) => item.status === 'needs-action')).toBe(true);
+
+  await menu.locator('summary').click();
+  await menu.getByRole('button', { name: 'Print workspace' }).click();
+  expect(await page.evaluate(() => window.__printed)).toBe(true);
+});
+
+test('clipboard denial is handled without a false success or page error', async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: async () => { throw new DOMException('Denied', 'NotAllowedError'); } },
+    });
+  });
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.goto('/demo');
+  await page.locator('.boundary-footer').getByRole('button', { name: 'Copy judge prompt' }).click();
+  await expect(page.getByRole('status')).toContainText('Copy was blocked');
+  expect(pageErrors).toEqual([]);
+});
+
+test('agent rail tabs support arrow-key navigation', async ({ page }) => {
+  await page.goto('/demo');
+  const capabilities = page.getByRole('tab', { name: /Capabilities/ });
+  const activity = page.getByRole('tab', { name: /Activity/ });
+  await capabilities.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(activity).toBeFocused();
+  await expect(activity).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('Home');
+  await expect(capabilities).toBeFocused();
+  await expect(capabilities).toHaveAttribute('aria-selected', 'true');
+});
+
+test('landing and demo without WebMCP stay within every reviewed release viewport', async ({ page }) => {
+  for (const viewport of [{ width: 320, height: 844 }, { width: 390, height: 844 }, { width: 768, height: 900 }, { width: 1200, height: 630 }, { width: 1280, height: 900 }, { width: 1440, height: 900 }]) {
+    const { width, height } = viewport;
+    await page.setViewportSize(viewport);
     for (const path of ['/', '/demo']) {
       await page.goto(path);
       if (path === '/demo') await expect(page.locator('main[data-hydrated="true"]')).toBeVisible();
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), `${path} at ${width}px`).toBe(true);
+      if (path === '/' && width === 1200 && height === 630) {
+        const productBox = await page.locator('.hero-product').boundingBox();
+        expect(productBox).not.toBeNull();
+        expect(productBox!.y).toBeGreaterThanOrEqual(0);
+        expect(productBox!.y + productBox!.height).toBeLessThanOrEqual(height);
+      }
+      if (path === '/demo' && width === 320) {
+        await page.getByRole('button', { name: 'Save to care plan' }).click();
+        await page.getByRole('button', { name: 'Draft from profile' }).click();
+        await page.getByRole('button', { name: 'Prepare booking' }).click();
+        for (const selector of ['.approval-content', '.lease-contract', '.approval-actions']) {
+          expect(await page.locator(selector).evaluate((element) => element.scrollWidth <= element.clientWidth), `${selector} prepared at 320px`).toBe(true);
+        }
+        await page.getByRole('button', { name: 'Authorize this exact appointment' }).click();
+        for (const selector of ['.approval-content', '.lease-contract', '.approval-actions', '.commit-node']) {
+          expect(await page.locator(selector).evaluate((element) => element.scrollWidth <= element.clientWidth), `${selector} approved at 320px`).toBe(true);
+        }
+      }
     }
   }
 });

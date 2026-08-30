@@ -17,7 +17,7 @@ export const metadata: Metadata = {
     type: 'website',
     url: '/',
     siteName: 'ReferralArc',
-    images: [{ url: '/og.png', width: 1731, height: 909, alt: 'ReferralArc human-governed referral workspace' }],
+    images: [{ url: '/og.png', width: 1200, height: 630, alt: 'ReferralArc human-governed referral workspace' }],
   },
   twitter: {
     card: 'summary_large_image',

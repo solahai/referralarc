@@ -19,17 +19,18 @@ export default function Home() {
         </a>
         <nav aria-label="Main navigation">
           <a href="#why">Why WebMCP</a>
+          <a href="https://github.com/solahai/referralarc" target="_blank" rel="noreferrer">View source</a>
           <a href="/demo">Open demo</a>
         </nav>
       </header>
 
       <section className="landing-hero">
         <div className="hero-copy">
-          <p className="eyebrow">A capability boundary for care coordination</p>
-          <h1>The agent prepares. Maya decides whether confirmation can exist.</h1>
+          <p className="eyebrow">Fictional healthcare workflow demo · WebMCP capability boundary</p>
+          <h1>The agent prepares. Visible review leases one exact confirmation.</h1>
           <p className="hero-lede">
             A clinician has already issued Maya’s MRI order. ReferralArc lets a browser agent handle the downstream
-            administrative maze, while Maya controls the one capability that can confirm an appointment.
+            administrative maze, while confirmation stays out of the native tool surface until one exact draft is visibly authorized.
           </p>
           <div className="hero-actions">
             <a className="primary-button large" href="/demo">Open the golden demo <span aria-hidden="true">→</span></a>
@@ -59,9 +60,9 @@ export default function Home() {
             <div className="preview-main">
               <small>Best administrative match</small>
               <h2>Northline Imaging Studio</h2>
-              <p>Thu, Aug 27 · 4:10 PM</p>
+              <p>Tue, Oct 6 · 4:10 PM</p>
               <div><span>$62 estimated</span><span>22 min</span><span>Accessible</span></div>
-              <button type="button">Prepared for review</button>
+              <span className="preview-status">Prepared for review</span>
             </div>
             <div className="preview-tools">
               <small>Agent capabilities</small>

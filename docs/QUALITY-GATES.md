@@ -4,64 +4,72 @@ This document records observable gates; it does not assign ReferralArc its own j
 
 ## Functional integrity
 
-- 5 — Golden path reaches confirmed appointment
-- 4 — Deterministic reset restores the same facts with a fresh workflow epoch
-- 4 — Human fallback reaches the same outcome
-- 4 — Hard constraints exclude ineligible options
-- 3 — Read actions do not mutate domain state
-- 3 — Reversible actions stay reversible
-- 3 — Exact authorization gates commitment
-- 2 — Duplicate commit is idempotent
-- 2 — Receipts and audit history are visible
+- Golden path reaches a confirmed fictional appointment
+- Deterministic reset restores the same facts with a fresh workflow epoch and monotonically increasing state version
+- Human fallback reaches the same outcome
+- Hard constraints exclude ineligible options
+- Read actions do not mutate domain state
+- Reversible actions stay reversible
+- Visible exact authorization gates commitment
+- Duplicate commit is idempotent at the domain boundary
+- Actor-attributed receipts and audit history are visible
 
 ## WebMCP leverage
 
-- 5 — Direct document.modelContext.registerTool usage
-- 4 — Twelve non-overlapping typed tools
-- 4 — Reliable first-turn reversible surface plus dynamic commit/receipt registration
-- 3 — Closed schemas plus runtime validation
-- 3 — Correct readOnlyHint and untrustedContentHint use
-- 2 — Registration and invocation cancellation handled
-- 2 — Metadata and representative result-budget tests
-- 2 — Same-origin secure-context deployment policy
-- 3 — Native Chrome 149+ getTools/executeTool lifecycle smoke test
+- Direct `document.modelContext.registerTool` usage
+- Twelve purpose-specific typed tools
+- Reliable page-start read/reversible surface plus dynamic commit/receipt registration
+- Closed schemas plus runtime validation
+- `readOnlyHint` and `untrustedContentHint` coverage
+- Registration and invocation cancellation handling
+- Metadata and representative result-budget tests
+- Same-origin WebMCP default plus camera, microphone, and geolocation restrictions
+- Final local production release-candidate native Chrome 151 evidence recorded August 30 at 21:57:16Z: `registerTool`, `getTools()`, and `executeTool()` were available; the ten-tool initial surface, authorization-gated commit lifecycle, post-use receipt, structured booking handles in both runs, and consequential-cancellation consistency all passed. Repeat on the exact deployed SHA before submission.
 
 ## Security and privacy
 
-- 3 — Synthetic-only disclosure in product and docs
-- 3 — Provider-note prompt injection is inert
-- 3 — Stale authorization, stale version, reset/replay, and expiry rejected
-- 2 — Commit rechecks authorization at mutation boundary
-- 2 — No arbitrary URL or cross-origin tool exposure
-- 2 — Security headers and threat model included
+- Synthetic-only disclosure in product and docs
+- Provider-note prompt injection is inert
+- Stale authorization, stale version, reset/replay, and expiry are rejected
+- Commit rechecks authorization at the synchronous mutation boundary
+- No arbitrary URL or cross-origin tool exposure
+- Security headers and threat model are included
 
 ## UX and accessibility
 
-- 4 — Responsive 390, 768, 1280, and 1440 layouts reviewed
-- 3 — Automated serious/critical accessibility scan passes
-- 2 — Full Axe landmark audit runs without disabling the region rule
-- 3 — Keyboard focus, semantics, and live status
-- 2 — Reduced-motion support
-- 2 — Shared status hierarchy and plain-language errors
-- 1 — Print-friendly care plan
+- Responsive 320, 390, 768, 1280, and 1440 layouts covered
+- Automated serious/critical accessibility scan
+- Full Axe landmark audit without disabling the region rule
+- Keyboard focus, semantics, and live status
+- Reduced-motion support
+- Shared status hierarchy and plain-language errors
+- Print-friendly workspace
 
 ## Engineering evidence
 
-- 3 — 46 unit/contract/security tests and 8 end-to-end tests pass
-- 2 — Typecheck, lint, and production build pass
-- 2 — Full production and development dependency audit reports zero known vulnerabilities and is enforced in CI
-- 2 — README, judge guide, demo script, and submission copy
-- 1 — Architecture diagram and challenge work log
-- 1 — Public MIT license
-- 2 — Public production deployment verified over HTTPS
-- 3 — Previous public build Lighthouse baseline: 99 Performance, 100 Accessibility, 81 Best Practices, 100 SEO; LCP 1.5 s, CLS 0, TBT 130 ms. Two local runs of this exact pre-deployment release: 75–78 Performance, 100 Accessibility, 100 Best Practices, 100 SEO; LCP 4.2 s, CLS 0, TBT 60–200 ms. Re-measure after deployment; the prior production Best Practices deduction came from the hosting platform’s injected cdn-cgi script.
+- 52 unit/contract/security tests and 13 end-to-end tests in the current suite
+- Typecheck, lint, and production-build gates
+- Full production and development dependency audit reports zero known vulnerabilities and is enforced in CI
+- README, judge guide, demo script, and submission copy
+- Architecture diagram and challenge work log
+- Native Chrome screenshots regenerated from the final local production release candidate on August 30 at 21:56Z; confirm or recapture them against the exact deployed SHA
+- Public MIT license
+- Public HTTPS baseline deployment; exact final-release redeploy pending
+- Historical Lighthouse evidence only: an August 25 public build measured 99 Performance, 100 Accessibility, 81 Best Practices, and 100 SEO; two earlier local builds measured 75–78 Performance, 100 Accessibility, 100 Best Practices, and 100 SEO. These are not measurements of the current working tree. Re-measure the exact deployment before submission.
 
-## Release blockers
+## Official submission blockers
 
-- Native WebMCP must be rechecked on the exact deployed release and recorded in the final video; the local Chrome API lifecycle smoke test is automated separately.
-- The 65-case corpus is contract-checked by CI, but a real-agent repeated evaluation and published pass rate remain a pre-submission evidence task.
-- The Best Practices above 90 production target remains externally blocked by the hosting platform’s injected script; app-authored console errors are zero.
-- Public access must remain free through the end of judging.
-- Public source repository and narrated YouTube video under three minutes must be attached to the submission.
-- Entrant eligibility, Devpost registration, team representative, and final submission fields require human confirmation.
-- The exact submitted release must be tagged and frozen before the deadline; no substantive post-deadline changes.
+- Deploy the exact final release at the submitted live URL and keep access free and unrestricted through September 21, 2026 at 5:00 p.m. PT.
+- Keep the exact final source, assets, functional instructions, and visible MIT license public.
+- Publish a public YouTube demonstration with audio that is strictly under three minutes and add it to Devpost.
+- Complete the four required text explanations and every Devpost field; confirm entrant eligibility, ownership, rights, English-language materials, and the team representative when applicable.
+- If the entrant has other submissions, confirm each is unique and substantially different.
+- Do not change or alter the submitted materials after the submission period ends except as the Official Rules expressly permit.
+
+## Internal evidence and release controls
+
+- Repeat the passing local-candidate native WebMCP smoke on the exact deployed SHA and show the real capability lifecycle in the final video.
+- The 65-case file is contract-checked by CI. Repeated runs with a real agent and a published pass rate would be valuable additional evidence, but are not an Official Rules requirement.
+- Re-measure Lighthouse on the exact deployment. A score threshold is an internal target, not a challenge requirement.
+- Tagging and freezing the final commit is a useful reproducibility control, not an Official Rules requirement by itself.
+- The README/native screenshots and evidence file now reflect the final local candidate; verify or refresh them and every recorded claim against the exact deployed SHA.

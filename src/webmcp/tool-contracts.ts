@@ -51,7 +51,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'get_case_summary',
     title: 'Read case summary',
-    description: 'Returns the current administrative care objective, constraints, readiness, workflow status, and state version.',
+    description: 'Returns the current administrative objective, constraints, workflow status, state version, and any exact prepared or authorized action handle.',
     inputSchema: emptySchema,
     annotations: { readOnlyHint: true, untrustedContentHint: false },
     kind: 'read',
@@ -91,7 +91,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'compare_options',
     title: 'Compare care options',
-    description: 'Compares two to four fictional options on schedule, travel, access, estimated cost, requirements, and coverage.',
+    description: 'Compares two to four fictional options on schedule, travel, access, estimated cost, and coverage.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -141,11 +141,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       required: ['locationId', 'expectedStateVersion'],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, untrustedContentHint: false },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
     kind: 'draft',
     available: (state) => !state.appointment,
     execute: async (engine, input, signal) => {
-      await briefDelay(signal);
+      signal.throwIfAborted();
       return engine.savePlanOption(input.locationId as string, input.expectedStateVersion as number);
     },
   },
@@ -163,7 +163,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     kind: 'draft',
     available: (state) => !state.appointment,
     execute: async (engine, input, signal) => {
-      await briefDelay(signal);
+      signal.throwIfAborted();
       return engine.draftIntake(input.expectedStateVersion as number);
     },
   },
@@ -181,11 +181,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       required: ['locationId', 'slotId', 'expectedStateVersion'],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, untrustedContentHint: false },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
     kind: 'draft',
     available: (state) => !state.appointment,
     execute: async (engine, input, signal) => {
-      await briefDelay(signal);
+      signal.throwIfAborted();
       return engine.prepareBooking(input.locationId as string, input.slotId as string, input.expectedStateVersion as number);
     },
   },
@@ -196,17 +196,16 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     inputSchema: {
       type: 'object',
       properties: {
-        bookingId: { type: 'string', description: 'Exact human-approved booking draft identifier.' },
+        bookingId: { type: 'string', description: 'Exact approved draft identifier returned by prepare_booking or get_case_summary.' },
         ...versionSchema,
       },
       required: ['bookingId', 'expectedStateVersion'],
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: false, untrustedContentHint: false },
+    annotations: { readOnlyHint: false, untrustedContentHint: true },
     kind: 'commit',
     available: (state) => hasActiveApproval(state) && !state.appointment,
     execute: async (engine, input, signal) => {
-      await briefDelay(signal);
       signal.throwIfAborted();
       return engine.commitBooking(input.bookingId as string, input.expectedStateVersion as number);
     },
@@ -220,9 +219,9 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
       properties: { receiptId: { type: 'string', description: 'Optional action receipt identifier.' } },
       additionalProperties: false,
     },
-    annotations: { readOnlyHint: true, untrustedContentHint: false },
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
     kind: 'read',
-    available: (state) => Boolean(state.appointment),
+    available: (state) => state.receipts.length > 0,
     execute: async (engine, input, signal) => { await briefDelay(signal); return engine.getActionReceipt(input.receiptId as string | undefined); },
   },
 ];
@@ -232,7 +231,7 @@ export function validateToolInput(definition: ToolDefinition, input: unknown): R
   const record = input as Record<string, unknown>;
   const allowed = new Set(Object.keys(definition.inputSchema.properties));
   for (const key of Object.keys(record)) {
-    if (!allowed.has(key)) throw new TypeError(`Unexpected property: ${key}`);
+    if (!allowed.has(key)) throw new TypeError('Tool input contains an unexpected property.');
   }
   for (const key of definition.inputSchema.required ?? []) {
     if (!Object.prototype.hasOwnProperty.call(record, key)) throw new TypeError(`Missing required property: ${key}`);

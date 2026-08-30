@@ -40,11 +40,15 @@ describe('WebMCP tool contracts', () => {
     expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'get_requirements')?.annotations.untrustedContentHint).toBe(true);
     expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'get_open_slots')?.annotations.untrustedContentHint).toBe(true);
     expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'check_coverage')?.annotations.untrustedContentHint).toBe(true);
+    expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'save_plan_option')?.annotations.untrustedContentHint).toBe(true);
+    expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'prepare_booking')?.annotations.untrustedContentHint).toBe(true);
+    expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'commit_booking')?.annotations.untrustedContentHint).toBe(true);
+    expect(TOOL_DEFINITIONS.find((tool) => tool.name === 'get_action_receipt')?.annotations.untrustedContentHint).toBe(true);
   });
 
   it('rejects unexpected properties', () => {
     const definition = TOOL_DEFINITIONS.find((tool) => tool.name === 'get_case_summary')!;
-    expect(() => validateToolInput(definition, { password: 'irrelevant' })).toThrow('Unexpected property');
+    expect(() => validateToolInput(definition, { password: 'irrelevant' })).toThrow(/unexpected property/i);
   });
 
   it('rejects missing and mistyped properties', () => {
@@ -83,16 +87,19 @@ describe('WebMCP tool contracts', () => {
       ['find_care_options', engine.findCareOptions()],
       ['get_open_slots', engine.getOpenSlots('northline')],
       ['check_coverage', engine.checkCoverage('northline')],
-      ['compare_options', engine.compareOptions(['northline', 'harborlight'])],
-      ['compare_options_4', engine.compareOptions(['northline', 'harborlight', 'willow', 'aster'])],
-      ['get_requirements', engine.getRequirements('bluejay')],
+      ['compare_options', engine.compareOptions(['northline', 'thimblefern'])],
+      ['compare_options_4', engine.compareOptions(['northline', 'thimblefern', 'morrowfen', 'rowanveil'])],
+      ['get_requirements', engine.getRequirements('quillmere')],
       ['validate_readiness', engine.readiness()],
     ];
     outputs.push(['save_plan_option', engine.savePlanOption('northline', 1)]);
     outputs.push(['draft_intake', engine.draftIntake(2)]);
     outputs.push(['prepare_booking', engine.prepareBooking('northline', 'northline_slot_1', 3)]);
-    outputs.push(['approve_booking', engine.approveBooking()]);
-    outputs.push(['commit_booking', engine.commitBooking('booking_draft_01', 5)]);
+    let state = engine.getState();
+    outputs.push(['human_approval', engine.approveBooking(state.preparedBooking!.id, state.stateVersion)]);
+    state = engine.getState();
+    outputs.push(['authorized_case_summary', engine.getCaseSummary()]);
+    outputs.push(['commit_booking', engine.commitBooking(state.preparedBooking!.id, state.stateVersion)]);
     outputs.push(['get_action_receipt', engine.getActionReceipt()]);
     outputs.forEach(([name, output]) => expect(JSON.stringify(output).length, name).toBeLessThanOrEqual(1500));
   });

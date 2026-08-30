@@ -1,5 +1,5 @@
 {
-  "recordedAt": "2026-08-26T02:21:34Z",
+  "recordedAt": "2026-08-30T21:57:16Z",
   "command": "CHROME_PATH=/path/to/chrome PREVIEW_URL=http://127.0.0.1:4173 npm run test:native",
   "browser": "151.0.7922.34",
   "api": {
@@ -12,5 +12,9 @@
   "commitAfterAuthorization": true,
   "commitAfterUse": false,
   "receiptAfterUse": true,
-  "scope": "Local production build using synthetic fixtures; repeat on the exact deployed release before submission."
+  "bookingHandleFromStructuredOutput": true,
+  "consequentialCancellationConsistent": true,
+  "cancellationOutcome": "returned",
+  "secondBookingHandleFromStructuredOutput": true,
+  "scope": "final local production release candidate; repeat on exact deployed SHA before submission"
 }

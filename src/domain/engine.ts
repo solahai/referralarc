@@ -1,6 +1,7 @@
 import { CARE_LOCATIONS, FICTIONAL_CASE, GOLDEN_CONSTRAINTS } from '@/src/data/synthetic/network';
 import type {
   ActionReceipt,
+  ActionActor,
   CareLocation,
   CareState,
   RankedOption,
@@ -10,21 +11,21 @@ import type {
 } from './types';
 
 const BASE_TIME = '2026-08-25T16:00:00.000Z';
-const ON_FILE_REQUIREMENTS = new Set(['Referral document', 'Coverage card', 'Photo identification']);
+const ON_FILE_REQUIREMENTS = new Set(FICTIONAL_CASE.onFileRequirements.map((item) => item.name));
 
-export function createInitialState(workflowEpoch = 1): CareState {
+export function createInitialState(workflowEpoch = 1, stateVersion = 1): CareState {
   return {
     caseId: 'case_maya_mri',
     workflowEpoch,
     status: 'REFERRAL_READY',
-    stateVersion: 1,
+    stateVersion,
     selectedLocationId: null,
     intakeDraft: null,
     preparedBooking: null,
     approval: null,
     appointment: null,
     receipts: [],
-    history: [{ version: 1, action: 'demo_initialized', timestamp: BASE_TIME }],
+    history: [{ version: stateVersion, action: 'demo_initialized', timestamp: BASE_TIME, actor: 'system' }],
   };
 }
 
@@ -39,6 +40,12 @@ function eligibleSlot(slot: Slot): boolean {
   return slot.open && weekday > 0 && weekday < 6 && localHour >= GOLDEN_CONSTRAINTS.weekdayAfterHour;
 }
 
+export function getEligibleSlots(locationId: string): Slot[] {
+  return (getLocation(locationId)?.slots ?? [])
+    .filter(eligibleSlot)
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+}
+
 export function rankLocations(locations: CareLocation[] = CARE_LOCATIONS): RankedOption[] {
   return locations
     .filter((location) => location.service === GOLDEN_CONSTRAINTS.service)
@@ -49,7 +56,7 @@ export function rankLocations(locations: CareLocation[] = CARE_LOCATIONS): Ranke
       if (location.travelMinutes > GOLDEN_CONSTRAINTS.maxTravelMinutes) exclusions.push(`Travel is ${location.travelMinutes} minutes`);
       if (location.estimatedCost > GOLDEN_CONSTRAINTS.maxCost) exclusions.push(`Estimated cost is $${location.estimatedCost}`);
       if (location.coverage !== 'covered') exclusions.push(location.coverage === 'partial' ? 'Only partially covered' : 'Outside fictional coverage');
-      if (!validSlots.length) exclusions.push('No suitable weekday slot after 3 PM');
+      if (!validSlots.length) exclusions.push('No suitable weekday slot at or after 3 PM');
       const missingRequirements = location.requirements.filter((requirement) => !ON_FILE_REQUIREMENTS.has(requirement));
       if (missingRequirements.length) exclusions.push(`${missingRequirements.join(', ')} not on file`);
       const earliest = validSlots[0] ?? null;
@@ -77,7 +84,18 @@ export function rankLocations(locations: CareLocation[] = CARE_LOCATIONS): Ranke
         exclusions,
       };
     })
-    .sort((a, b) => (Number(b.eligible) - Number(a.eligible)) || b.score - a.score);
+    .sort((a, b) => {
+      const eligibility = Number(b.eligible) - Number(a.eligible);
+      if (eligibility) return eligibility;
+      if (a.eligible && b.eligible) {
+        const earliest = a.earliestSlot!.startsAt.localeCompare(b.earliestSlot!.startsAt);
+        if (earliest) return earliest;
+        return (a.estimatedCost - b.estimatedCost)
+          || (a.travelMinutes - b.travelMinutes)
+          || a.name.localeCompare(b.name);
+      }
+      return b.score - a.score;
+    });
 }
 
 export function getLocation(id: string): CareLocation | undefined {
@@ -104,11 +122,12 @@ export function nextTools(state: CareState): ToolName[] {
     'get_requirements',
     'validate_readiness',
   ];
-  if (state.appointment) return [...readTools, 'get_action_receipt'];
+  const receiptTools: ToolName[] = state.receipts.length ? ['get_action_receipt'] : [];
+  if (state.appointment) return [...readTools, ...receiptTools];
   const reversibleTools: ToolName[] = ['save_plan_option', 'draft_intake', 'prepare_booking'];
   return hasActiveApproval(state)
-    ? [...readTools, ...reversibleTools, 'commit_booking']
-    : [...readTools, ...reversibleTools];
+    ? [...readTools, ...receiptTools, ...reversibleTools, 'commit_booking']
+    : [...readTools, ...receiptTools, ...reversibleTools];
 }
 
 type Listener = (state: CareState) => void;
@@ -167,25 +186,36 @@ export class CareEngine {
       : this.error('STALE_STATE', `State changed from version ${expected} to ${this.state.stateVersion}. Re-read the case and retry.`);
   }
 
-  private mutate(action: string, changed: string[], apply: () => void, summary: string): ResultEnvelope {
+  private mutate<T = unknown>(
+    action: string,
+    changed: string[],
+    apply: () => void,
+    summary: string,
+    data?: () => T,
+    actor: ActionActor = 'browser_agent',
+  ): ResultEnvelope<T> {
     apply();
     this.state.stateVersion += 1;
-    this.state.history.push({ version: this.state.stateVersion, action, timestamp: new Date().toISOString() });
+    this.state.history.push({ version: this.state.stateVersion, action, timestamp: new Date().toISOString(), actor });
+    this.state.history = this.state.history.slice(-60);
     const receipt: ActionReceipt = {
-      id: `rcpt_${String(this.state.receipts.length + 1).padStart(3, '0')}`,
+      id: `rcpt_${String(this.state.workflowEpoch).padStart(2, '0')}_${this.state.stateVersion}`,
       action,
       summary,
       timestamp: new Date().toISOString(),
       stateVersion: this.state.stateVersion,
       changes: changed,
+      actor,
     };
     this.state.receipts.push(receipt);
+    this.state.receipts = this.state.receipts.slice(-60);
     this.publish();
     return {
       ok: true,
       summary,
       stateVersion: this.state.stateVersion,
       receiptId: receipt.id,
+      data: data?.(),
       changed,
       blockers: [],
       nextAvailableActions: nextTools(this.state),
@@ -193,7 +223,9 @@ export class CareEngine {
   }
 
   reset(): CareState {
-    this.state = createInitialState(this.state.workflowEpoch + 1);
+    // Versions never repeat across resets. This fences delayed pre-reset tool
+    // invocations even when an older browser cannot propagate call cancellation.
+    this.state = createInitialState(this.state.workflowEpoch + 1, this.state.stateVersion + 1);
     this.publish();
     return this.getState();
   }
@@ -202,11 +234,25 @@ export class CareEngine {
     return this.result('Maya Chen has a clinician-issued knee MRI order ready for downstream administrative coordination.', {
       caseId: this.state.caseId,
       objective: FICTIONAL_CASE.objective,
+      order: FICTIONAL_CASE.order,
       constraints: GOLDEN_CONSTRAINTS,
       referral: FICTIONAL_CASE.referralDocument.status,
+      coverageMemberStatus: FICTIONAL_CASE.coveragePlan.memberStatus,
       workflowStatus: this.state.status,
       selectedLocationId: this.state.selectedLocationId,
-      readiness: this.readiness().data,
+      workflowEpoch: this.state.workflowEpoch,
+      preparedBooking: this.state.preparedBooking ? {
+        bookingId: this.state.preparedBooking.id,
+        locationId: this.state.preparedBooking.locationId,
+        slotId: this.state.preparedBooking.slotId,
+        draftStateVersion: this.state.preparedBooking.stateVersion,
+      } : null,
+      authorization: this.state.approval ? {
+        bookingId: this.state.approval.bookingId,
+        expiresAt: this.state.approval.expiresAt,
+        active: hasActiveApproval(this.state),
+      } : null,
+      appointmentId: this.state.appointment?.id ?? null,
     });
   }
 
@@ -236,9 +282,10 @@ export class CareEngine {
   getOpenSlots(locationId: string): ResultEnvelope {
     const location = getLocation(locationId);
     if (!location) return this.error('NOT_FOUND', 'That fictional location does not exist.');
-    return this.result(`${location.name} has ${location.slots.filter(eligibleSlot).length} suitable open slots.`, {
+    const suitableSlots = getEligibleSlots(locationId);
+    return this.result(`${location.name} has ${suitableSlots.length} suitable open slots.`, {
       locationId,
-      slots: location.slots.filter(eligibleSlot),
+      slots: suitableSlots,
       provenance: { source: 'Synthetic provider availability fixture', observedAt: BASE_TIME, confirmationRequired: true },
     });
   }
@@ -252,6 +299,7 @@ export class CareEngine {
         locationId,
         coverage: location.coverage,
         estimatedPatientCost: location.estimatedCost,
+        planMemberStatus: FICTIONAL_CASE.coveragePlan.memberStatus,
         provenance: { source: 'Synthetic coverage fixture', checkedAt: BASE_TIME, confirmationRequired: true },
       },
     );
@@ -312,7 +360,7 @@ export class CareEngine {
     };
   }
 
-  savePlanOption(locationId: string, expectedStateVersion: number): ResultEnvelope {
+  savePlanOption(locationId: string, expectedStateVersion: number, actor: ActionActor = 'browser_agent'): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed. Reset the demo to start a new workflow.');
     const option = rankLocations().find((item) => item.locationId === locationId);
     if (!option) return this.error('NOT_FOUND', 'That fictional location does not exist.');
@@ -320,25 +368,25 @@ export class CareEngine {
     if (this.state.selectedLocationId === locationId) return this.result(`${option.name} is already saved to the plan. Existing preparation was preserved.`);
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
-    return this.mutate('save_plan_option', ['selectedLocationId', 'intakeDraft', 'status', 'approval'], () => {
+    return this.mutate('save_plan_option', ['selectedLocationId', 'intakeDraft', 'preparedBooking', 'approval', 'appointment', 'status'], () => {
       this.state.selectedLocationId = locationId;
       this.state.intakeDraft = null;
       this.state.preparedBooking = null;
       this.state.approval = null;
       this.state.appointment = null;
       this.state.status = 'OPTION_SELECTED';
-    }, `${option.name} was saved to the working care plan.`);
+    }, `${option.name} was saved to the working care plan.`, undefined, actor);
   }
 
-  draftIntake(expectedStateVersion: number): ResultEnvelope {
+  draftIntake(expectedStateVersion: number, actor: ActionActor = 'browser_agent'): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (this.state.intakeDraft) return this.result('The minimum intake packet is already drafted. Existing preparation was preserved.');
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
     if (!this.state.selectedLocationId) return this.error('MISSING_SELECTION', 'Save a suitable care option before drafting intake.');
-    return this.mutate('draft_intake', ['intakeDraft', 'status', 'approval'], () => {
+    return this.mutate('draft_intake', ['intakeDraft', 'preparedBooking', 'approval', 'status'], () => {
       this.state.intakeDraft = {
-        id: 'intake_maya_01',
+        id: `intake_maya_${String(this.state.workflowEpoch).padStart(2, '0')}_${this.state.stateVersion + 1}`,
         version: (this.state.intakeDraft?.version ?? 0) + 1,
         fields: {
           preferredName: FICTIONAL_CASE.patient.preferredName,
@@ -350,13 +398,17 @@ export class CareEngine {
       this.state.preparedBooking = null;
       this.state.approval = null;
       this.state.status = 'INTAKE_DRAFTED';
-    }, 'A minimal synthetic intake packet was drafted from information already on file.');
+    }, 'A minimal synthetic intake packet was drafted from information already on file.', undefined, actor);
   }
 
-  prepareBooking(locationId: string, slotId: string, expectedStateVersion: number): ResultEnvelope {
+  prepareBooking(locationId: string, slotId: string, expectedStateVersion: number, actor: ActionActor = 'browser_agent'): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (this.state.preparedBooking?.locationId === locationId && this.state.preparedBooking.slotId === slotId) {
-      return this.result('This exact non-binding booking is already prepared. Existing authorization was preserved.');
+      return this.result('This exact non-binding booking is already prepared. Existing authorization was preserved.', {
+        bookingId: this.state.preparedBooking.id,
+        locationId,
+        slotId,
+      });
     }
     const stale = this.requireVersion(expectedStateVersion);
     if (stale) return stale;
@@ -368,7 +420,7 @@ export class CareEngine {
     if (!location || !slot) return this.error('SLOT_UNAVAILABLE', 'That suitable fictional slot is no longer available.');
     return this.mutate('prepare_booking', ['preparedBooking', 'status', 'approval'], () => {
       this.state.preparedBooking = {
-        id: `booking_draft_${String(this.state.workflowEpoch).padStart(2, '0')}`,
+        id: `booking_draft_${String(this.state.workflowEpoch).padStart(2, '0')}_${this.state.stateVersion + 1}`,
         locationId,
         slotId,
         intakeDraftId: this.state.intakeDraft!.id,
@@ -377,42 +429,64 @@ export class CareEngine {
       };
       this.state.approval = null;
       this.state.status = 'AWAITING_HUMAN_APPROVAL';
-    }, `Prepared a non-binding booking draft for ${location.name}. Human approval is required.`);
+    }, `Prepared a non-binding booking draft for ${location.name}. Human approval is required.`, () => ({
+      bookingId: this.state.preparedBooking!.id,
+      locationId: this.state.preparedBooking!.locationId,
+      slotId: this.state.preparedBooking!.slotId,
+    }), actor);
   }
 
-  approveBooking(): ResultEnvelope {
+  approveBooking(bookingId: string, expectedStateVersion: number): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (!this.state.preparedBooking) return this.error('NO_DRAFT', 'There is no prepared booking to approve.');
+    if (this.state.preparedBooking.id !== bookingId) {
+      return this.error('REVIEW_CHANGED', 'The prepared booking changed after it was shown. Review the current draft before authorizing.');
+    }
     if (hasActiveApproval(this.state)) return this.result('This exact booking already has active human authorization.');
+    const stale = this.requireVersion(expectedStateVersion);
+    if (stale) return stale;
     return this.mutate('approve_booking', ['approval', 'status'], () => {
       this.state.approval = {
-        id: `approval_booking_${String(this.state.workflowEpoch).padStart(2, '0')}`,
+        id: `approval_booking_${String(this.state.workflowEpoch).padStart(2, '0')}_${this.state.stateVersion + 1}`,
         bookingId: this.state.preparedBooking!.id,
         bookingStateVersion: this.state.preparedBooking!.stateVersion,
         approvedAt: new Date().toISOString(),
         expiresAt: new Date(Date.now() + this.approvalTtlMs).toISOString(),
       };
       this.state.status = 'APPROVED';
-    }, 'Confirmation is authorized for this exact draft.');
+    }, 'Confirmation is authorized for this exact draft.', () => ({
+      bookingId: this.state.approval!.bookingId,
+      expiresAt: this.state.approval!.expiresAt,
+    }), 'human');
   }
 
-  rejectBooking(): ResultEnvelope {
+  rejectBooking(bookingId: string, expectedStateVersion: number): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (!this.state.preparedBooking) return this.error('NO_DRAFT', 'There is no prepared booking to reject.');
+    if (this.state.preparedBooking.id !== bookingId) {
+      return this.error('REVIEW_CHANGED', 'The prepared booking changed after it was shown. Review the current draft before rejecting.');
+    }
+    const stale = this.requireVersion(expectedStateVersion);
+    if (stale) return stale;
     return this.mutate('reject_booking', ['preparedBooking', 'approval', 'status'], () => {
       this.state.preparedBooking = null;
       this.state.approval = null;
       this.state.status = this.state.intakeDraft ? 'INTAKE_DRAFTED' : 'OPTION_SELECTED';
-    }, 'The prepared booking was rejected and no appointment was confirmed.');
+    }, 'The prepared booking was rejected and no appointment was confirmed.', undefined, 'human');
   }
 
-  revokeApproval(): ResultEnvelope {
+  revokeApproval(approvalId: string, bookingId: string, expectedStateVersion: number): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (!this.state.approval) return this.error('NO_APPROVAL', 'There is no active authorization to revoke.');
+    if (this.state.approval.id !== approvalId || this.state.approval.bookingId !== bookingId) {
+      return this.error('REVIEW_CHANGED', 'The authorization changed after it was shown. Review the current lease before revoking.');
+    }
+    const stale = this.requireVersion(expectedStateVersion);
+    if (stale) return stale;
     return this.mutate('revoke_approval', ['approval', 'status'], () => {
       this.state.approval = null;
       this.state.status = this.state.preparedBooking ? 'AWAITING_HUMAN_APPROVAL' : 'INTAKE_DRAFTED';
-    }, 'Human authorization was revoked. The prepared draft remains available for review.');
+    }, 'Human authorization was revoked. The prepared draft remains available for review.', undefined, 'human');
   }
 
   expireApproval(at = Date.now()): ResultEnvelope {
@@ -421,10 +495,10 @@ export class CareEngine {
     return this.mutate('expire_approval', ['approval', 'status'], () => {
       this.state.approval = null;
       this.state.status = this.state.preparedBooking ? 'AWAITING_HUMAN_APPROVAL' : 'INTAKE_DRAFTED';
-    }, 'Human approval expired. The confirmation capability was removed; review and approve the draft again.');
+    }, 'Human approval expired. The confirmation capability was removed; review and approve the draft again.', undefined, 'system');
   }
 
-  commitBooking(bookingId: string, expectedStateVersion: number): ResultEnvelope {
+  commitBooking(bookingId: string, expectedStateVersion: number, actor: ActionActor = 'browser_agent'): ResultEnvelope {
     if (this.state.appointment?.bookingId === bookingId) {
       return this.result('This approved booking was already confirmed. No duplicate appointment was created.', { appointmentId: this.state.appointment.id });
     }
@@ -438,6 +512,8 @@ export class CareEngine {
     if (Date.parse(approval.expiresAt) <= Date.now()) return this.error('APPROVAL_EXPIRED', 'Human approval expired. Prepare and approve the action again.');
     if (approval.bookingStateVersion !== booking.stateVersion) return this.error('APPROVAL_REVOKED', 'The booking changed after approval.');
     const location = getLocation(booking.locationId)!;
+    const currentSlot = location.slots.find((slot) => slot.id === booking.slotId && eligibleSlot(slot));
+    if (!currentSlot) return this.error('SLOT_UNAVAILABLE', 'The fictional slot failed final availability revalidation. Prepare a new booking draft.');
     return this.mutate('commit_booking', ['appointment', 'status', 'approval'], () => {
       this.state.appointment = {
         id: `appt_demo_${String(this.state.workflowEpoch).padStart(3, '0')}`,
@@ -448,7 +524,11 @@ export class CareEngine {
       };
       this.state.approval = null;
       this.state.status = 'BOOKED';
-    }, `Confirmed the fictional appointment at ${location.name}. No real booking occurred.`);
+    }, `Revalidated availability and confirmed the fictional appointment at ${location.name}. No real booking occurred.`, () => ({
+      appointmentId: this.state.appointment!.id,
+      bookingId: this.state.appointment!.bookingId,
+      availabilityRevalidated: true,
+    }), actor);
   }
 
   getActionReceipt(receiptId?: string): ResultEnvelope {

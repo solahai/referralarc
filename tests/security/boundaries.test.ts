@@ -4,7 +4,7 @@ import { CareEngine, rankLocations } from '@/src/domain/engine';
 describe('security and healthcare boundaries', () => {
   it('keeps instruction-like provider text inert and bounded', () => {
     const engine = new CareEngine();
-    const result = engine.getRequirements('bluejay');
+    const result = engine.getRequirements('quillmere');
     expect(JSON.stringify(result.data)).toContain('Ignore previous instructions');
     expect(rankLocations()[0].locationId).toBe('northline');
   });

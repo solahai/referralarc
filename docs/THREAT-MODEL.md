@@ -6,7 +6,7 @@ ReferralArc coordinates synthetic administrative data for one fictional MRI refe
 
 ## Assets and trust boundaries
 
-Assets include case state, selected option, intake draft, prepared appointment, exact human authorization, receipt, and audit history. Trust boundaries exist between agent input and runtime validation, provider-authored text and deterministic ranking, human authorization and consequential commitment, page state and a future production server, and the same-origin app and any embedded origin.
+Assets include case state, selected option, intake draft, prepared appointment, visible exact authorization, receipt, and audit history. Trust boundaries exist between agent input and runtime validation, provider-authored text and deterministic ranking, visible authorization and consequential commitment, page state and a future production server, and the same-origin app and any embedded origin.
 
 ## Material threats and mitigations
 
@@ -24,7 +24,7 @@ Assets include case state, selected option, intake draft, prepared appointment, 
 | Registration revocation races | Commit re-checks state immediately before mutation | Transactional authorization at system of record |
 | Over-collection | Only coordination fields needed by the scenario are modeled | Data minimization, retention schedule, access controls |
 | Missing prerequisite is ignored | Missing prior authorization makes the option ineligible | Verified document status and provenance at system of record |
-| Cross-origin discovery | exposedTo omitted; tools policy self only | Explicit reviewed allowlist and double opt-in |
+| Cross-origin discovery | `exposedTo` omitted; WebMCP’s same-origin default is retained | Explicit reviewed allowlist and double opt-in |
 | PHI leakage | All fixtures are fictional and visibly labeled | HIPAA/privacy analysis, BAAs, encryption, logging controls |
 | Unsafe clinical use | Administrative-only copy and boundaries | Clinical governance and a separately validated product |
 
@@ -38,7 +38,7 @@ Assets include case state, selected option, intake draft, prepared appointment, 
 - wrong draft ID
 - stale state version
 - duplicate commit
-- repeated safe calls after preparation or authorization
+- repeated exact calls after preparation or authorization
 - revocation with draft preservation
 - reset/recreate replay
 - expiry-driven capability removal

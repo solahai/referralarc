@@ -54,7 +54,7 @@ export class WebMCPRegistry {
   }
 
   start(): void {
-    this.unsubscribeEngine = this.engine.subscribe(() => this.reconcile());
+    this.unsubscribeEngine = this.engine.subscribe(() => this.handleStateChange());
     this.reconcile();
   }
 
@@ -94,6 +94,42 @@ export class WebMCPRegistry {
     return new Set(TOOL_DEFINITIONS.filter((tool) => tool.available(state)).map((tool) => tool.name));
   }
 
+  private handleStateChange(): void {
+    // Revoke disallowed registrations synchronously, including registrations
+    // whose browser promise has not settled yet. Do not let an awaited
+    // registerTool call make a revoked capability transiently discoverable.
+    const desired = this.desiredNames();
+    let changed = false;
+    for (const [name, controller] of this.pendingRegistrations) {
+      if (desired.has(name)) continue;
+      controller.abort();
+      this.pendingRegistrations.delete(name);
+      this.recordEvent(name, 'removed', 'Capability was revoked while native registration was pending.');
+      changed = true;
+    }
+    for (const [name, controller] of this.registrations) {
+      if (desired.has(name)) continue;
+      // Let an atomic commit return its success envelope before Chrome 151
+      // observes registration abort. External revoke/expiry/reset still abort
+      // immediately, even if an invocation was already in flight.
+      if (this.inFlight.has(name) && name === 'commit_booking' && this.engine.getState().appointment) continue;
+      controller.abort();
+      this.registrations.delete(name);
+      this.recordEvent(name, 'removed', 'Shared page state no longer permits this capability.');
+      changed = true;
+    }
+    if (changed) this.emit();
+    this.reconcile();
+  }
+
+  private registeredActions(): ToolName[] {
+    const state = this.engine.getState();
+    const available = new Set(
+      TOOL_DEFINITIONS.filter((definition) => definition.available(state)).map((definition) => definition.name),
+    );
+    return [...this.registrations.keys()].filter((name) => available.has(name));
+  }
+
   private reconcile(): void {
     this.queue = this.queue.then(async () => {
       if (this.stopped) return;
@@ -101,6 +137,7 @@ export class WebMCPRegistry {
         clearTimeout(this.expiryTimer);
         this.expiryTimer = null;
       }
+      this.scheduleApprovalExpiry();
       let desired = this.desiredNames();
       for (const [name, controller] of this.registrations) {
         if (!desired.has(name) && !this.inFlight.has(name)) {
@@ -110,7 +147,6 @@ export class WebMCPRegistry {
         }
       }
       if (!this.modelContext) {
-        this.scheduleApprovalExpiry();
         this.emit();
         return;
       }
@@ -122,7 +158,7 @@ export class WebMCPRegistry {
         try {
           // Direct native WebMCP registration. The registration signal is the
           // current-spec unregistration mechanism; there is no unregisterTool().
-          await this.modelContext.registerTool({
+          const registration = this.modelContext.registerTool({
             name: definition.name,
             title: definition.title,
             description: definition.description,
@@ -132,9 +168,9 @@ export class WebMCPRegistry {
             // strings. Keep the domain handler structured, then encode the
             // bounded envelope at the browser boundary.
             execute: async (inputObject, context) => {
-              // Chrome 151 invokes the current callback with only the input
-              // object. Accept the proposed invocation signal when present,
-              // while remaining compatible with that one-argument shape.
+              // The recorded Chrome 151 challenge build invoked this callback
+              // with only the input object. Current APIs also provide an
+              // invocation signal, so accept both shapes.
               const signal = context?.signal ?? new AbortController().signal;
               this.inFlight.set(definition.name, (this.inFlight.get(definition.name) ?? 0) + 1);
               try {
@@ -143,15 +179,27 @@ export class WebMCPRegistry {
                 const remaining = (this.inFlight.get(definition.name) ?? 1) - 1;
                 if (remaining > 0) this.inFlight.set(definition.name, remaining);
                 else this.inFlight.delete(definition.name);
-                // Chrome 151 cancels an invocation if its registration signal
-                // is aborted before the callback settles. Reconcile only after
-                // the browser has received the result.
+                // The recorded Chrome 151 build cancelled work if its
+                // registration signal was aborted before this callback
+                // settled. Newer implementations preserve in-flight work.
+                // Reconcile after the result so both behaviors stay coherent.
                 setTimeout(() => this.reconcile(), 0);
               }
             },
           }, {
             signal: controller.signal,
           });
+          let registrationTimeout: ReturnType<typeof setTimeout> | null = null;
+          try {
+            await Promise.race([
+              registration,
+              new Promise<never>((_resolve, reject) => {
+                registrationTimeout = setTimeout(() => reject(new DOMException('Native registration timed out.', 'TimeoutError')), 2500);
+              }),
+            ]);
+          } finally {
+            if (registrationTimeout) clearTimeout(registrationTimeout);
+          }
           this.pendingRegistrations.delete(definition.name);
           const stillAvailable = definition.available(this.engine.getState());
           if (this.stopped || controller.signal.aborted || !stillAvailable) {
@@ -174,7 +222,6 @@ export class WebMCPRegistry {
           this.recordEvent(name, 'removed', 'Latest shared page state no longer permits this capability.');
         }
       }
-      this.scheduleApprovalExpiry();
       this.emit();
     });
   }
@@ -184,7 +231,10 @@ export class WebMCPRegistry {
     if (!approval) return;
     const remaining = Date.parse(approval.expiresAt) - Date.now();
     if (remaining > 0) {
-      this.expiryTimer = setTimeout(() => this.engine.expireApproval(), Math.min(remaining + 10, 2_147_483_647));
+      this.expiryTimer = setTimeout(() => {
+        this.engine.expireApproval();
+        if (this.engine.getState().approval) this.reconcile();
+      }, Math.min(remaining + 10, 2_147_483_647));
     } else {
       this.engine.expireApproval();
     }
@@ -221,7 +271,7 @@ export class WebMCPRegistry {
           stateVersion: this.engine.getState().stateVersion,
           changed: [],
           blockers: ['Re-read the case and use a currently registered action.'],
-          nextAvailableActions: this.snapshot().activeTools,
+          nextAvailableActions: this.registeredActions(),
           error: { code: 'TOOL_UNAVAILABLE', message: 'Capability is unavailable in the current workflow state.' },
         };
         Object.assign(activity, {
@@ -235,33 +285,11 @@ export class WebMCPRegistry {
       }
       const input = validateToolInput(definition, rawInput);
       let result = await definition.execute(this.engine, input, signal);
-      let output = JSON.stringify(result);
-      if (output.length > 1500 && result.ok && definition.kind !== 'read') {
-        result = {
-          ...result,
-          summary: result.summary.slice(0, 500),
-          data: undefined,
-          blockers: [],
-        };
-        output = JSON.stringify(result);
-      }
-      if (output.length > 1500) {
-        Object.assign(activity, {
-          status: 'error' as const,
-          finishedAt: new Date().toISOString(),
-          detail: 'Result exceeded the 1,500-character agent budget.',
-        });
-        this.emit();
-        return {
-          ok: false,
-          summary: 'Result exceeded the safe context budget.',
-          stateVersion: this.engine.getState().stateVersion,
-          changed: [],
-          blockers: ['Narrow the query and retry.'],
-          nextAvailableActions: this.snapshot().activeTools,
-          error: { code: 'RESULT_TOO_LARGE', message: 'Result exceeded 1,500 characters.' },
-        };
-      }
+      result = {
+        ...result,
+        nextAvailableActions: result.nextAvailableActions.filter((name) => this.registeredActions().includes(name)),
+      };
+      result = this.boundResult(result, definition);
       Object.assign(activity, {
         status: result.ok ? 'success' : 'error',
         durationMs: Math.round(performance.now() - started),
@@ -280,16 +308,41 @@ export class WebMCPRegistry {
       });
       this.activities = [...this.activities];
       this.emit();
-      return {
+      return this.boundResult({
         ok: false,
         summary: activity.summary!,
         stateVersion: this.engine.getState().stateVersion,
         changed: [],
         blockers: [activity.summary!],
-        nextAvailableActions: this.snapshot().activeTools,
+        nextAvailableActions: this.registeredActions(),
         error: { code: signal.aborted ? 'CANCELLED' : 'INVALID_INPUT', message: activity.summary! },
+      }, definition);
+    }
+  }
+
+  private boundResult(result: ResultEnvelope, definition: ToolDefinition): ResultEnvelope {
+    if (JSON.stringify(result).length <= 1500) return result;
+    if (result.ok && definition.kind !== 'read') {
+      // Never report failure after a mutation has already succeeded.
+      return {
+        ok: true,
+        summary: result.summary.slice(0, 400),
+        stateVersion: result.stateVersion,
+        receiptId: result.receiptId,
+        changed: result.changed.slice(0, 12),
+        blockers: [],
+        nextAvailableActions: result.nextAvailableActions,
       };
     }
+    return {
+      ok: false,
+      summary: 'Result exceeded the safe context budget.',
+      stateVersion: this.engine.getState().stateVersion,
+      changed: [],
+      blockers: ['Narrow the query and retry.'],
+      nextAvailableActions: this.registeredActions(),
+      error: { code: 'RESULT_TOO_LARGE', message: 'Result exceeded 1,500 characters.' },
+    };
   }
 }
 

@@ -36,6 +36,7 @@ export interface CareLocation {
   coverage: 'covered' | 'partial' | 'not_covered';
   requirements: string[];
   slots: Slot[];
+  accessibilityDetail?: string;
   administrativeNote?: string;
 }
 
@@ -98,6 +99,8 @@ export interface Appointment {
   confirmedAt: string;
 }
 
+export type ActionActor = 'browser_agent' | 'human' | 'system';
+
 export interface ActionReceipt {
   id: string;
   action: string;
@@ -105,12 +108,14 @@ export interface ActionReceipt {
   timestamp: string;
   stateVersion: number;
   changes: string[];
+  actor: ActionActor;
 }
 
 export interface HistoryEntry {
   version: number;
   action: string;
   timestamp: string;
+  actor: ActionActor;
 }
 
 export interface CareState {

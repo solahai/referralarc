@@ -1,6 +1,6 @@
 # WebMCP Challenge compliance and judge audit
 
-Verified against the [OpenAI challenge page](https://openai.com/webmcp-challenge/), [Devpost requirements](https://webmcp.devpost.com/), and [binding Official Rules](https://webmcp.devpost.com/rules) on August 26, 2026. The Official Rules control if other challenge materials conflict.
+Verified against the [OpenAI challenge page](https://openai.com/webmcp-challenge/), [Devpost requirements](https://webmcp.devpost.com/), and [binding Official Rules](https://webmcp.devpost.com/rules) on August 30, 2026. The Official Rules control if other challenge materials conflict.
 
 Status key: **PASS** is present and repository-verifiable, **MANUAL** requires entrant action or a supported browser, and **WATCH** is a release obligation. This is an engineering audit, not a legal opinion or a predicted judge score.
 
@@ -11,30 +11,30 @@ Status key: **PASS** is present and repository-verifiable, **MANUAL** requires e
 | Registration and submission by September 3, 2026 at 1:00 p.m. PT | **MANUAL** | Complete the Devpost entry with deadline buffer. |
 | Eligible individual, team, or organization in an OpenAI API-supported jurisdiction | **MANUAL** | Entrant must verify age of majority, residence/domicile, exclusions, sanctions, and conflicts. |
 | Team or organization appoints a representative | **MANUAL** | Add the representative and every team member to Devpost. |
-| One submission maximum | **MANUAL** | Entrant must confirm no competing submission. |
+| Multiple submissions must be unique and substantially different | **MANUAL** | The rules allow more than one submission; if the entrant has others, confirm each is unique and substantially different. |
 | New build or meaningful WebMCP extension during the challenge window | **PASS** | Repository history starts August 25, 2026; `docs/CHALLENGE-WORK.md` and dated commits distinguish the work. |
 | Web app powered by the required WebMCP API | **PASS** | Native `document.modelContext.registerTool`, typed tools, lifecycle signals, state-aware registration, and shared visual/domain state. |
-| Works consistently and matches description/video | **PASS / MANUAL** | Deterministic CI and fallback pass; record one native supported-browser run and ensure the final video matches that exact release. |
-| Working live URL accessible in ChatGPT desktop’s in-app browser or Chrome 149+ testing mode | **PASS / MANUAL** | Public HTTPS URL and progressive fallback are live; native discovery/invocation must be rechecked and recorded in the challenge-supported environment. |
+| Works consistently and matches description/video | **WATCH / MANUAL** | The current working tree has deterministic automated coverage; rerun every gate on the exact release and make the final video match it. |
+| Working live URL accessible in ChatGPT’s in-app browser or Chrome with WebMCP enabled | **WATCH — BLOCKER** | A public HTTPS baseline exists, but it still serves the previous fixture/release. Deploy and verify the exact final build before submission. |
 | Text explains WebMCP fit, UX improvement, newly possible behavior, and implementation | **PASS** | `docs/SUBMISSION.md` has dedicated sections for all four prompts. |
-| Public source repository with all source, assets, and run instructions | **PASS** | Public GitHub repository includes app, fixtures, tests, docs, screenshots, and local commands. |
+| Public source repository with all source, assets, and run instructions | **PASS** | The exact source, assets, and run instructions are published under the visible MIT license at [github.com/solahai/referralarc](https://github.com/solahai/referralarc). |
 | Open-source license visible at repository top/About | **PASS** | MIT license is committed and detected by GitHub. |
-| Public YouTube demo with audio, strictly under three minutes | **MANUAL — BLOCKER** | Record the 2:30 script, publish publicly, and add the URL to Devpost and `docs/SUBMISSION.md`. Judges need not watch beyond three minutes. |
+| Public YouTube demo with audio, strictly under three minutes | **MANUAL — BLOCKER** | Record the 2:20 script, publish publicly, and add the URL to Devpost and `docs/SUBMISSION.md`. Judges need not watch beyond three minutes. |
 | Video clearly shows a functioning product and WebMCP use | **MANUAL — BLOCKER** | Show native absence → authorization → registration → fresh-turn invocation → receipt → removal. Do not substitute a static mock. |
-| English entry or English translations | **PASS** | Product, repository, and prepared submission copy are English. |
+| English entry or English translations | **PASS / MANUAL** | Product, repository, and prepared copy are English; confirm the final video, captions, and testing instructions are also English or translated. |
 | Authorized/licensed third-party code, data, music, and marks only | **PASS / WATCH** | Code is MIT-compatible and fixtures are synthetic; use no unlicensed music or third-party marks in the recording. |
 | Original/solely owned submission and compliant OSS use | **MANUAL** | Repository evidence supports new work; entrant must make the binding ownership representation. |
 | Free and unrestricted live access through judging end | **WATCH** | Keep the public site reachable without login through September 21, 2026 at 5:00 p.m. PT. |
-| No substantive submission changes after deadline | **WATCH** | Freeze the tagged release before submission; only non-substantive availability maintenance afterward. |
+| No changes or alterations to the Submission after the deadline except as the rules permit | **WATCH** | Finalize submitted materials before the deadline. Tagging the commit is a useful internal control, not the rule itself. |
 
 ## Stage-one viability
 
 | Gate | Status | Evidence |
 | --- | --- | --- |
-| Fits the future open web where people and agents collaborate | **PASS** | A visible shared workspace lets an agent prepare while a person controls the consequential capability. |
+| Fits the future open web where people and agents collaborate | **PASS** | A visible shared workspace lets an agent prepare while Maya reviews the exact consequential action; no WebMCP tool grants authorization. |
 | Reasonable use of required WebMCP APIs | **PASS** | Twelve direct native tool registrations, not a wrapper around chat or DOM automation. |
 | Non-trivial implementation | **PASS** | Multi-tool composition, closed schemas, runtime invariants, dynamic capability lifetime, cancellation, expiry, receipts, and shared state. |
-| Coherent runnable product rather than technical proof-of-concept | **PASS** | Landing, complete agent and human flows, responsive workspace, fallback, reset, exports, audit history, errors, tests, and public deployment. |
+| Coherent runnable product rather than technical proof-of-concept | **PASS / WATCH** | The working tree includes landing, complete agent and human flows, responsive workspace, fallback, reset, exports, audit history, errors, and tests; exact public deployment is pending. |
 
 ## Stage-two rubric audit
 
@@ -44,24 +44,24 @@ Strong evidence:
 
 - The decisive capability, `commit_booking`, is absent before authorization, registered for one exact prepared draft, and removed after revocation, expiry, state invalidation, reset, or use.
 - The page shows the actual successful native registry, not merely desired application state.
-- Ten safe capabilities remain discoverable at turn start because current WebMCP does not guarantee immediate agent rediscovery after each registration change.
+- Ten read/reversible-draft capabilities are discoverable when the page starts because immediate agent rediscovery after each registration change is not guaranteed.
 - Registration lifetime and invocation cancellation use separate signals; the handler independently rechecks authorization immediately before commitment.
 - Tool names, descriptions, parameters, schemas, annotations, and maximum valid outputs are budget- and contract-tested.
 
-Native proof: on August 26, 2026, the automated smoke test passed in Chrome 151.0.7922.34 using native `getTools()` and `executeTool()`: ten safe tools initially, commit absent before authorization, present after authorization, removed after successful use, and receipt available. The final entry still needs this repeated on the exact deployed release and a recorded natural-language agent run. Do not claim that every browser or agent product supports WebMCP.
+Final local production release-candidate evidence: on August 30, 2026 at 21:57:16Z, the automated smoke test passed in Chrome 151.0.7922.34 with native `registerTool`, `getTools()`, and `executeTool()` functions. It verified ten initial read/reversible tools, commit absent before authorization, present afterward, removed after use, receipt availability, structured booking handles in both runs, and a consequential-cancellation probe whose returned result was consistent with confirmed state. Repeat the smoke on the exact deployed SHA before submission. A separate repeated natural-language-agent report would strengthen the evidence but is not an Official Rules requirement. Do not claim that every browser or agent product supports WebMCP.
 
 ### Execution
 
 Strong evidence:
 
 - One deterministic golden path and a complete no-WebMCP human fallback reach the same receipt through the same domain engine.
-- Repeated safe calls are idempotent and cannot erase prepared or authorized state.
+- Repeated exact preparation calls are idempotent no-ops and cannot erase prepared or authorized state.
 - True revocation removes authorization while preserving the exact reviewed draft; reject-and-revise remains a separate destructive choice.
 - Automatic expiry actively updates state and removes the capability without waiting for a failed call.
 - Alternative providers, prerequisites, eligible slots, excluded reasons, provenance, and visible state remain consistent.
 - Typecheck, lint, unit, contract, security, accessibility, build, and end-to-end gates are automated.
 
-Remaining delivery risk: the public release must be frozen only after supported-browser verification, refreshed media, and final production checks.
+Remaining delivery risk: the final local candidate has supported-browser verification and regenerated native screenshots, but the exact public deployment is still pending. Repeat the native check on that deployed SHA, confirm its media, complete final production checks, and retain a tagged commit as an internal reproducibility control.
 
 ### Potential Impact
 
@@ -69,7 +69,7 @@ Strong evidence:
 
 - The product begins after a clinician has issued an order and targets the administrative handoff: constraints, availability, access, estimates, requirements, intake, and confirmation.
 - It avoids diagnosis, treatment selection, medical-quality ranking, or claims of live coverage/availability.
-- The same pattern can govern other high-consequence browser actions where preparation can be delegated but final authority should be exact, visible, expiring, and auditable.
+- The same pattern can govern other high-consequence browser actions where preparation can be delegated but final authority should be exact, visible, expiring, and inspectable.
 
 Remaining evidence risk: this synthetic build demonstrates feasibility, not time saved, patient outcomes, production integration, HIPAA compliance, or buyer validation. Do not imply otherwise.
 
@@ -77,8 +77,8 @@ Remaining evidence risk: this synthetic build demonstrates feasibility, not time
 
 Strong evidence:
 
-- The defensible invention is **capability-lifetime consent**, not generic AI referral coordination.
-- Human authority becomes a change in the browser’s native discoverable action surface instead of a prompt-only instruction or permanently exposed tool with an internal boolean check.
+- The defensible differentiation is applying **capability-lifetime consent** to one exact referral action and making its lifecycle visible; it is not a claim to have invented dynamic tools, consent management, or referral coordination.
+- Visible exact authorization becomes a change in the browser’s native discoverable action surface instead of only a prompt instruction or a permanently exposed tool with an internal boolean check.
 - The interface visualizes that boundary as a live sequence: **Absent → exact ten-minute lease → consumed and removed**.
 
 Remaining differentiation risk: referral scheduling is a crowded category. Every headline, first 15 seconds of video, screenshot, and judge explanation must lead with the capability-lifetime mechanism.
@@ -86,32 +86,39 @@ Remaining differentiation risk: referral scheduling is a crowded category. Every
 ## Product and evidence defects closed in the final audit
 
 - Revoke no longer means reject: authorization is removed while the reviewed draft remains intact and can be reauthorized.
-- Repeated `save_plan_option`, `draft_intake`, `prepare_booking`, and approval calls are safe no-ops when they repeat the current exact action.
+- Repeated `save_plan_option`, `draft_intake`, `prepare_booking`, and approval calls are non-mutating no-ops when they repeat the current exact action.
 - The largest valid four-provider comparison remains below Chrome’s recommended 1,500-character result budget.
 - The core mechanism is now a persistent visual capability boundary, with a scoped lease card at authorization and a closed-boundary receipt after use.
 - The landing page leads with absence, exact lease, and removal instead of tool-count marketing.
 - The accessibility audit covers the full landmark structure rather than suppressing the `region` rule.
 - The mobile and no-WebMCP fallback explicitly show truthful native availability rather than simulated registration.
 - The framework and build toolchain were upgraded together until the full production-and-development dependency audit reported zero known vulnerabilities.
-- Native Chrome testing exposed and closed two browser-boundary defects that the in-page harness could not: the current one-argument callback shape and Chrome 151 cancelling an invocation when its registration is removed before the callback settles.
+- Chrome 151 testing first exposed two browser-boundary compatibility defects that the in-page harness could not: the earlier recorded build invoked the callback with one argument and canceled an invocation when its registration was removed before the callback settled. The current specification supplies a second invocation-options signal, and Chrome documentation says version 153 no longer breaks in-flight work on unregistration. The August 30 local candidate now passes the structured-handle and consequential-cancellation consistency probes.
 
-## Non-negotiable pre-submission checklist
+## Official submission blockers
 
-1. Run the exact tagged release in the challenge-supported native environment and capture the full capability lifecycle.
-2. Run the 65-case prompt corpus repeatedly with the actual judging agent; publish raw traces, model/version, trial count, and selection/argument/sequence/stop-boundary pass rates. The current CI validates the corpus contract, not model performance.
-3. Record a public narrated video from the verified release, keep it comfortably below three minutes, review captions, and avoid unlicensed marks/music.
-4. Use the approved short description, live URL, repository URL, video URL, representative, and team information in Devpost.
-5. Confirm eligibility, ownership, third-party rights, one-submission limit, and the appointed representative before the binding submission.
-6. Tag and freeze the submitted commit, keep the site free through judging, and retain dated evidence.
+1. Deploy a working exact release at the submitted live URL and keep it free and unrestricted through September 21, 2026 at 5:00 p.m. PT.
+2. Keep this exact tagged source, its assets and functional instructions, and the visible MIT license public.
+3. Record a public YouTube video with audio from that functioning release, keep it strictly under three minutes, and avoid unlicensed marks or music.
+4. Submit the four required text explanations plus the live, repository, and video URLs and all representative/team fields in Devpost.
+5. Confirm eligibility, ownership, third-party rights, English-language materials, and the appointed representative when applicable. If there are other submissions, confirm each is unique and substantially different.
+6. Do not change or alter the submitted materials after the submission period except as the Official Rules expressly permit.
+
+## Internal high-value evidence and controls
+
+1. Repeat the passing native smoke against the exact deployed SHA and capture that full capability lifecycle for the video.
+2. Optionally run the 65-case prompt corpus repeatedly with a real agent and publish raw traces, model/version, trial count, and selection/argument/sequence/stop-boundary pass rates. CI validates the corpus contract, not model performance.
+3. Native screenshots and evidence are current for the final local candidate; confirm or refresh them, the social card, and Lighthouse measurements against the exact deployed SHA.
+4. Tag and retain the exact submitted commit for reproducibility.
 
 ## Claims to avoid
 
 - “Guaranteed to win,” “clinically validated,” “HIPAA compliant,” or any judge score.
 - “WebMCP is a W3C Standard” or “works in all browsers.” It is an experimental Community Group draft.
 - “Live provider, payer, EHR, FHIR, or patient integration.” All workflow data is synthetic.
-- “AI referral coordination is novel.” The narrow novelty claim is capability-lifetime consent.
+- “We invented dynamic consent tools” or “AI referral coordination is novel.” The defensible claim is ReferralArc’s specific visible, exact, expiring capability lifecycle.
 - “The 65 prompts pass with the judging agent” until repeated raw-agent results exist.
 
 ## The one-sentence judge message
 
-> The agent may prepare the entire administrative handoff, but only Maya can temporarily create the one native browser capability that confirms her exact appointment—and that capability disappears after use.
+> The agent may prepare the administrative handoff, but no WebMCP tool can authorize confirmation; Maya’s visible review temporarily registers one exact booking capability, and that capability disappears after use.

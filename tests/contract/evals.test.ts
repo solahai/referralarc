@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import { CARE_LOCATIONS } from '@/src/data/synthetic/network';
 import { TOOL_DEFINITIONS } from '@/src/webmcp/tool-contracts';
 
 type EvalCase = {
@@ -35,7 +36,37 @@ describe('evaluation corpus contracts', () => {
   it('covers golden, near-miss, adversarial, and recovery cases without stale fixture names', () => {
     const categories = new Set(corpus.cases.map((item) => item.category));
     expect(categories).toEqual(new Set(['golden', 'near_miss', 'adversarial', 'recovery']));
-    expect(JSON.stringify(corpus)).not.toContain('Cedar Ridge');
-    expect(JSON.stringify(corpus)).not.toContain('APPROVAL_MISMATCH');
+    const corpusText = JSON.stringify(corpus);
+    [
+      'Cedar Ridge',
+      'Harborlight',
+      'Willow',
+      'Aster Grove',
+      'Cedar Loop',
+      'Bluejay',
+      'Orchard Row',
+      'Larkspur',
+      'Copperleaf',
+      'Brightwater',
+      'Meadowgate',
+      'Silver Maple',
+      'APPROVAL_MISMATCH',
+    ].forEach((legacyValue) => expect(corpusText).not.toContain(legacyValue));
+
+    const currentNames = new Map(CARE_LOCATIONS.map((location) => [location.id, location.name]));
+    const namedCases: Record<string, string[]> = {
+      'RA-004': ['northline', 'thimblefern'],
+      'RA-014': ['sablemere'],
+      'RA-015': ['lanternfen'],
+      'RA-016': ['morrowfen'],
+      'RA-017': ['rowanveil'],
+      'RA-030': ['northline', 'thimblefern'],
+      'RA-033': ['quillmere'],
+      'RA-045': ['northline', 'thimblefern'],
+    };
+    Object.entries(namedCases).forEach(([caseId, locationIds]) => {
+      const prompt = corpus.cases.find((item) => item.id === caseId)?.prompt ?? '';
+      locationIds.forEach((locationId) => expect(prompt, `${caseId}: ${locationId}`).toContain(currentNames.get(locationId)));
+    });
   });
 });

@@ -1,12 +1,14 @@
 # ReferralArc
 
-ReferralArc demonstrates **capability-lifetime consent**: a browser agent can prepare the administrative work after a clinician has ordered care, but only a person can temporarily create the one native WebMCP capability that confirms an exact appointment. Before authorization it is absent; after authorization it is a ten-minute, one-draft lease; after use it is removed.
+ReferralArc demonstrates **capability-lifetime consent**: a browser agent can prepare the administrative work after a clinician has ordered care, but no WebMCP tool can grant confirmation authority. In the visible demo flow, Maya reviews one exact appointment and creates a ten-minute, one-draft `commit_booking` lease. Before that review the capability is absent; after use it is removed.
 
-[Live site](https://referralarc.docsplainai.chatgpt.site) · [Golden demo](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
+[Public baseline — final release pending](https://referralarc.docsplainai.chatgpt.site) · [Golden demo](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
 
-![ReferralArc workspace](docs/screenshots/desktop-1440x900.jpg)
+![ReferralArc exact authorization lease](docs/screenshots/capability-leased-1440x900.jpg)
 
-The browser-visible app and its WebMCP tools share one deterministic domain engine. An agent can find eligible options, compare logistics, save a plan, draft intake, and prepare an appointment. The consequential commit tool does not exist until a person authorizes the exact draft. Approval revocation, draft changes, automatic expiry, reset, and successful commit remove it again.
+_Release-candidate capture from Chrome for Testing 151 using native WebMCP. The final video independently shows the browser's live Site tools._
+
+The browser-visible app and its WebMCP tools share one deterministic domain engine. An agent can find eligible options, compare logistics, save a plan, draft intake, and prepare an appointment. The consequential commit tool does not exist until the exact draft is visibly authorized. Approval revocation, draft changes, automatic expiry, reset, and successful commit remove it again.
 
 > Demonstration only. Every person, provider, plan, appointment, price, identifier, and note is fictional. ReferralArc does not provide medical advice and is not a clinical system.
 
@@ -16,7 +18,7 @@ Open /demo, then use the prompt card with a WebMCP-capable agent:
 
 > Coordinate Maya’s ordered MRI using every recorded constraint. Compare eligible options, draft only the minimum intake, prepare the best appointment, and stop before confirmation.
 
-The agent should select Northline Imaging and stop at the authorization boundary. Review the exact location, date, estimated patient cost, accessibility, synthetic coverage signal, data-use disclosure, and ten-minute authorization window. Select Authorize this exact appointment. The native capability rail then adds commit_booking. On the next turn, say:
+The agent should select Northline Imaging Studio and stop at the authorization boundary. Review the exact location, date, estimated patient cost, accessibility, synthetic coverage signal, data-use disclosure, and ten-minute authorization window. Select Authorize this exact appointment. In a supported browser, the capability rail records the successful native registration of `commit_booking`. On the next turn, say:
 
 > Re-read the current case state, then confirm only the exact appointment I approved.
 
@@ -38,9 +40,9 @@ ReferralArc does not create referrals, diagnose, select treatment, or rank medic
 
 Downstream coordination crosses search, availability, coverage signals, constraints, requirements, intake, and booking. Conventional UI automation must infer meaning from buttons and pixels. WebMCP lets the page expose small typed capabilities with precise effects while the visual workspace remains the shared source of truth.
 
-This is not a generic chat wrapper. The implementation registers native tools directly through document.modelContext.registerTool. Tool availability is reconciled with page state. An AbortController owns each registration lifetime, which is the current API’s unregistration mechanism. Tools are same-origin by default, schemas are closed, handlers validate again at runtime, and all results stay below the recommended 1,500-character context budget.
+This is not a generic chat wrapper. The implementation registers native tools directly through `document.modelContext.registerTool`. Tool availability is reconciled with page state. An `AbortController` owns each registration lifetime, which is the current API’s unregistration mechanism. Tools use the same-origin default, schemas are closed, handlers validate again at runtime, and contract tests keep representative maximum-valid results below Chrome’s recommended 1,500-character context budget.
 
-All safe, reversible preparation tools are registered at the start of a turn, so the golden path does not depend on immediate mid-turn tool rediscovery. The high-consequence commit tool remains dynamically gated. The project follows the current [W3C Community Group draft](https://webmachinelearning.github.io/webmcp/) and [Chrome imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api). WebMCP is experimental and is not a W3C Standard.
+All ten read and reversible-preparation tools are registered when the page starts, so the golden path does not depend on immediate mid-turn tool rediscovery. The high-consequence commit tool remains dynamically gated. The project follows the current [W3C Community Group draft](https://webmachinelearning.github.io/webmcp/) and [Chrome imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api). WebMCP is experimental and is not a W3C Standard.
 
 ## Safety model
 
@@ -48,29 +50,29 @@ All safe, reversible preparation tools are registered at the start of a turn, so
 - Provider notes are inert text and never affect ranking.
 - Read tools do not mutate workflow state.
 - Preparation and commitment are separate capabilities.
-- commit_booking is absent before exact human authorization.
+- `commit_booking` is absent before visible authorization of the exact draft.
 - Authorization is scoped to a draft ID, state version, and expiry.
 - Expiry actively revokes authorization and unregisters commit_booking.
 - The commit re-checks authorization immediately before the atomic state transition.
 - Idempotency prevents duplicate appointments.
 - A workflow epoch prevents stale commit identifiers from becoming valid after reset.
-- Every successful write returns a structured receipt and adds an audit event.
+- Every state-changing tool or visible decision action, except demo reset, returns a structured receipt and adds an actor-attributed audit event.
 - Reset restores the same deterministic facts with a fresh anti-replay workflow epoch.
 
-The in-memory authorization store is deliberate for this synthetic demo. A production system must enforce ownership, consent, idempotency, and authorization on a server. See [Threat model](docs/THREAT-MODEL.md).
+The in-memory workflow and authorization store are deliberate for this synthetic demo. A production system must enforce ownership, consent, idempotency, and authorization on a server. See [Threat model](docs/THREAT-MODEL.md).
 
 ## Run locally
 
 Requirements:
 
-- Node.js 24
+- Node.js 22.13 or newer
 - npm
 - Chrome 149 or later for native WebMCP testing
 
 Install and run:
 
 ~~~bash
-npm install
+npm ci
 npm run dev
 ~~~
 
@@ -90,17 +92,24 @@ npm run test:e2e
 
 The suite covers deterministic ranking, administrative prerequisites, alternative providers, mutation boundaries, replay and stale-state rejection, exact approval, automatic expiry, cancellation, idempotency, actual-registration truth, metadata and result budgets, hostile input, corpus drift, prompt-injection fixtures, accessibility, mobile overflow, and the complete agent and human paths.
 
-With a Chrome 149+ executable, also run the actual browser API lifecycle:
+With a Chrome 149+ executable, also run the actual browser API lifecycle. First start the production build:
 
 ~~~bash
-CHROME_PATH=/path/to/chrome npm run test:native
+npm run build
+npm run start -- --port 4173
+~~~
+
+Then, in a second terminal:
+
+~~~bash
+CHROME_PATH=/path/to/chrome PREVIEW_URL=http://127.0.0.1:4173 npm run test:native
 ~~~
 
 This calls native `getTools()` and `executeTool()`; it is separate from the deterministic in-page test harness.
 
 ### Measured release audit
 
-Lighthouse 13 was run against the previous public production release with its default mobile throttling on August 25, 2026: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction is attributable to three deprecated APIs in the hosting platform’s injected cdn-cgi challenge script; the app-authored console-error audit passes. Two pre-deployment runs of this exact release measured Performance 75–78, Accessibility 100, Best Practices 100, SEO 100, LCP 4.2 s, CLS 0, and TBT 60–200 ms under local simulated mobile throttling. Re-measure the deployed release before submission.
+Lighthouse 13 was run against a previous public production release with its default mobile throttling on August 25, 2026: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction was attributable to three deprecated APIs in the hosting platform’s injected `cdn-cgi` challenge script; the app-authored console-error audit passed. Two local runs of an earlier pre-deployment build measured Performance 75–78, Accessibility 100, Best Practices 100, SEO 100, LCP 4.2 s, CLS 0, and TBT 60–200 ms under simulated mobile throttling. These numbers are historical evidence, not measurements of the current working tree; re-measure the exact deployed release before submission.
 
 ## Project map
 
@@ -115,7 +124,7 @@ Lighthouse 13 was run against the previous public production release with its de
 
 ## Challenge evidence
 
-All implementation in this repository was created during the challenge window on August 25, 2026. [Challenge work log](docs/CHALLENGE-WORK.md) distinguishes the new work. The app is designed around the [WebMCP Challenge rubric](https://webmcp.devpost.com/) and its binding [Official Rules](https://webmcp.devpost.com/rules).
+This repository was created during the challenge window on August 25, 2026, and subsequent hardening through August 30 is recorded in the [challenge work log](docs/CHALLENGE-WORK.md). The app is designed around the [WebMCP Challenge rubric](https://webmcp.devpost.com/) and its binding [Official Rules](https://webmcp.devpost.com/rules).
 
 Useful handoff documents:
 

@@ -1,10 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { CareEngine, createInitialState, rankLocations } from '@/src/domain/engine';
+import { CARE_LOCATIONS } from '@/src/data/synthetic/network';
 
-function prepare(engine: CareEngine) {
+function prepare(engine: CareEngine): string {
   engine.savePlanOption('northline', engine.getState().stateVersion);
   engine.draftIntake(engine.getState().stateVersion);
   engine.prepareBooking('northline', 'northline_slot_1', engine.getState().stateVersion);
+  return engine.getState().preparedBooking!.id;
+}
+
+function authorize(engine: CareEngine) {
+  const state = engine.getState();
+  return engine.approveBooking(state.preparedBooking!.id, state.stateVersion);
+}
+
+function rejectReviewed(engine: CareEngine) {
+  const state = engine.getState();
+  return engine.rejectBooking(state.preparedBooking!.id, state.stateVersion);
+}
+
+function revokeReviewed(engine: CareEngine) {
+  const state = engine.getState();
+  return engine.revokeApproval(state.approval!.id, state.approval!.bookingId, state.stateVersion);
 }
 
 describe('deterministic care coordination engine', () => {
@@ -16,11 +33,11 @@ describe('deterministic care coordination engine', () => {
 
   it('separates hard exclusions from eligible finalists', () => {
     const options = rankLocations();
-    expect(options.find((item) => item.locationId === 'willow')?.exclusions).toContain('Wheelchair access unavailable');
-    expect(options.find((item) => item.locationId === 'aster')?.exclusions.join(' ')).toContain('$110');
-    expect(options.find((item) => item.locationId === 'cedar')?.exclusions.join(' ')).toContain('41 minutes');
-    expect(options.find((item) => item.locationId === 'orchard')?.exclusions).toContain('No suitable weekday slot after 3 PM');
-    expect(options.find((item) => item.locationId === 'silvermaple')?.exclusions).toContain('Prior authorization not on file');
+    expect(options.find((item) => item.locationId === 'morrowfen')?.exclusions).toContain('Wheelchair access unavailable');
+    expect(options.find((item) => item.locationId === 'rowanveil')?.exclusions.join(' ')).toContain('$110');
+    expect(options.find((item) => item.locationId === 'lanternfen')?.exclusions.join(' ')).toContain('41 minutes');
+    expect(options.find((item) => item.locationId === 'sablemere')?.exclusions).toContain('No suitable weekday slot at or after 3 PM');
+    expect(options.find((item) => item.locationId === 'fablecross')?.exclusions).toContain('Prior authorization not on file');
   });
 
   it('derives eligible counts instead of hard-coding the summary', () => {
@@ -29,7 +46,7 @@ describe('deterministic care coordination engine', () => {
   });
 
   it('does not use provider notes to rank', () => {
-    const injection = rankLocations().find((item) => item.locationId === 'bluejay')!;
+    const injection = rankLocations().find((item) => item.locationId === 'quillmere')!;
     expect(injection.eligible).toBe(false);
     expect(injection.exclusions).toContain('Outside fictional coverage');
   });
@@ -45,15 +62,15 @@ describe('deterministic care coordination engine', () => {
     engine.findCareOptions();
     engine.getOpenSlots('northline');
     engine.checkCoverage('northline');
-    engine.compareOptions(['northline', 'harborlight']);
-    engine.getRequirements('bluejay');
+    engine.compareOptions(['northline', 'thimblefern']);
+    engine.getRequirements('quillmere');
     engine.readiness();
     expect(engine.getState()).toEqual(before);
   });
 
   it('rejects a dominated plan option', () => {
     const engine = new CareEngine();
-    const result = engine.savePlanOption('willow', 1);
+    const result = engine.savePlanOption('morrowfen', 1);
     expect(result.ok).toBe(false);
     expect(result.error?.code).toBe('NOT_ELIGIBLE');
   });
@@ -64,22 +81,22 @@ describe('deterministic care coordination engine', () => {
     const state = engine.getState();
     expect(state.status).toBe('AWAITING_HUMAN_APPROVAL');
     expect(state.appointment).toBeNull();
-    expect(state.preparedBooking?.id).toBe('booking_draft_01');
+    expect(state.preparedBooking?.id).toBe('booking_draft_01_4');
   });
 
   it('refuses commit before exact approval', () => {
     const engine = new CareEngine();
-    prepare(engine);
-    const result = engine.commitBooking('booking_draft_01', engine.getState().stateVersion);
+    const bookingId = prepare(engine);
+    const result = engine.commitBooking(bookingId, engine.getState().stateVersion);
     expect(result.error?.code).toBe('APPROVAL_REQUIRED');
     expect(engine.getState().appointment).toBeNull();
   });
 
   it('enables an approved commit and produces a receipt', () => {
     const engine = new CareEngine();
-    prepare(engine);
-    engine.approveBooking();
-    const result = engine.commitBooking('booking_draft_01', engine.getState().stateVersion);
+    const bookingId = prepare(engine);
+    authorize(engine);
+    const result = engine.commitBooking(bookingId, engine.getState().stateVersion);
     expect(result.ok).toBe(true);
     expect(result.receiptId).toBeTruthy();
     expect(engine.getState().status).toBe('BOOKED');
@@ -87,11 +104,11 @@ describe('deterministic care coordination engine', () => {
 
   it('prevents duplicate appointment creation', () => {
     const engine = new CareEngine();
-    prepare(engine);
-    engine.approveBooking();
-    engine.commitBooking('booking_draft_01', engine.getState().stateVersion);
+    const bookingId = prepare(engine);
+    authorize(engine);
+    engine.commitBooking(bookingId, engine.getState().stateVersion);
     const count = engine.getState().receipts.length;
-    const duplicate = engine.commitBooking('booking_draft_01', engine.getState().stateVersion);
+    const duplicate = engine.commitBooking(bookingId, engine.getState().stateVersion);
     expect(duplicate.ok).toBe(true);
     expect(engine.getState().receipts).toHaveLength(count);
   });
@@ -107,8 +124,8 @@ describe('deterministic care coordination engine', () => {
   it('invalidates approval when prepared work is rejected', () => {
     const engine = new CareEngine();
     prepare(engine);
-    engine.approveBooking();
-    engine.rejectBooking();
+    authorize(engine);
+    rejectReviewed(engine);
     expect(engine.getState().approval).toBeNull();
     expect(engine.getState().preparedBooking).toBeNull();
   });
@@ -116,9 +133,9 @@ describe('deterministic care coordination engine', () => {
   it('revokes authorization without discarding the reviewed draft', () => {
     const engine = new CareEngine();
     prepare(engine);
-    engine.approveBooking();
+    authorize(engine);
     const booking = engine.getState().preparedBooking;
-    const result = engine.revokeApproval();
+    const result = revokeReviewed(engine);
     expect(result.ok).toBe(true);
     expect(engine.getState().approval).toBeNull();
     expect(engine.getState().preparedBooking).toEqual(booking);
@@ -128,12 +145,12 @@ describe('deterministic care coordination engine', () => {
   it('keeps repeated safe actions idempotent and preserves active authorization', () => {
     const engine = new CareEngine();
     prepare(engine);
-    engine.approveBooking();
+    authorize(engine);
     const before = engine.getState();
     expect(engine.savePlanOption('northline', 1).ok).toBe(true);
     expect(engine.draftIntake(2).ok).toBe(true);
     expect(engine.prepareBooking('northline', 'northline_slot_1', 3).ok).toBe(true);
-    expect(engine.approveBooking().ok).toBe(true);
+    expect(authorize(engine).ok).toBe(true);
     expect(engine.getState()).toEqual(before);
   });
 
@@ -141,32 +158,32 @@ describe('deterministic care coordination engine', () => {
     const engine = new CareEngine();
     engine.savePlanOption('northline', 1);
     engine.reset();
-    expect(engine.getState()).toEqual(createInitialState(2));
+    expect(engine.getState()).toEqual(createInitialState(2, 3));
   });
 
   it('uses a new workflow epoch so old commit identifiers cannot replay after reset', () => {
     const engine = new CareEngine();
     prepare(engine);
-    engine.approveBooking();
+    authorize(engine);
     const oldBookingId = engine.getState().preparedBooking!.id;
     engine.reset();
     prepare(engine);
-    engine.approveBooking();
+    authorize(engine);
     expect(engine.getState().preparedBooking!.id).not.toBe(oldBookingId);
     expect(engine.commitBooking(oldBookingId, engine.getState().stateVersion).error?.code).toBe('APPROVAL_REQUIRED');
   });
 
   it('does not recommend an option when every requested option is ineligible', () => {
-    const result = new CareEngine().compareOptions(['willow', 'aster']);
+    const result = new CareEngine().compareOptions(['morrowfen', 'rowanveil']);
     expect(result.summary).toContain('None');
     expect((result.data as { recommendation: string | null }).recommendation).toBeNull();
   });
 
-  it('prepares Harborlight using its eligible weekday slot', () => {
+  it('prepares Thimblefern using its eligible weekday slot', () => {
     const engine = new CareEngine();
-    engine.savePlanOption('harborlight', 1);
+    engine.savePlanOption('thimblefern', 1);
     engine.draftIntake(2);
-    const result = engine.prepareBooking('harborlight', 'harborlight_slot_2', 3);
+    const result = engine.prepareBooking('thimblefern', 'thimblefern_slot_2', 3);
     expect(result.ok).toBe(true);
   });
 
@@ -175,5 +192,42 @@ describe('deterministic care coordination engine', () => {
     engine.savePlanOption('northline', 1);
     engine.draftIntake(2);
     expect(engine.prepareBooking('northline', 'missing_slot', 3).error?.code).toBe('SLOT_UNAVAILABLE');
+  });
+
+  it('never repeats state versions across reset, so delayed old writes are rejected', () => {
+    const engine = new CareEngine();
+    const preResetVersion = engine.getState().stateVersion;
+    engine.reset();
+    expect(engine.getState().stateVersion).toBeGreaterThan(preResetVersion);
+    const stale = engine.savePlanOption('northline', preResetVersion);
+    expect(stale.error?.code).toBe('STALE_STATE');
+    expect(engine.getState().selectedLocationId).toBeNull();
+  });
+
+  it('generates a new exact handle when a draft is rejected and prepared again', () => {
+    const engine = new CareEngine();
+    const firstId = prepare(engine);
+    rejectReviewed(engine);
+    engine.prepareBooking('northline', 'northline_slot_1', engine.getState().stateVersion);
+    const secondId = engine.getState().preparedBooking!.id;
+    expect(secondId).not.toBe(firstId);
+    authorize(engine);
+    expect(engine.commitBooking(firstId, engine.getState().stateVersion).error?.code).toBe('APPROVAL_REQUIRED');
+  });
+
+  it('rejects stale visible-card decisions after the reviewed state changes', () => {
+    const engine = new CareEngine();
+    const bookingId = prepare(engine);
+    const reviewedVersion = engine.getState().stateVersion;
+    engine.rejectBooking(bookingId, reviewedVersion);
+    engine.prepareBooking('northline', 'northline_slot_1', engine.getState().stateVersion);
+    expect(engine.approveBooking(bookingId, reviewedVersion).error?.code).toBe('REVIEW_CHANGED');
+  });
+
+  it('keeps every appointment fixture beyond the judging window', () => {
+    const judgingEnds = Date.parse('2026-09-22T00:00:00Z');
+    CARE_LOCATIONS.flatMap((location) => location.slots).forEach((slot) => {
+      expect(Date.parse(slot.startsAt)).toBeGreaterThan(judgingEnds);
+    });
   });
 });

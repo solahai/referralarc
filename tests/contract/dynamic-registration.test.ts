@@ -4,6 +4,14 @@ import { WebMCPRegistry } from '@/src/webmcp/register-tools';
 import { MockModelContext } from '@/src/webmcp/testing/mock-model-context';
 
 const settle = () => new Promise((resolve) => setTimeout(resolve, 8));
+const approveCurrent = (engine: CareEngine) => {
+  const state = engine.getState();
+  return engine.approveBooking(state.preparedBooking!.id, state.stateVersion);
+};
+const revokeCurrent = (engine: CareEngine) => {
+  const state = engine.getState();
+  return engine.revokeApproval(state.approval!.id, state.approval!.bookingId, state.stateVersion);
+};
 
 describe('state-aware WebMCP registration', () => {
   it('encodes structured envelopes at the native Chrome boundary', async () => {
@@ -32,15 +40,26 @@ describe('state-aware WebMCP registration', () => {
     await settle();
     await context.execute('draft_intake', { expectedStateVersion: 2 });
 
-    await context.execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 });
+    const prepared = await context.execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 }) as {
+      data: { bookingId: string };
+    };
+    expect(prepared.data.bookingId).toMatch(/^booking_draft_/);
     await settle();
     expect(context.tools.has('commit_booking')).toBe(false);
 
-    engine.approveBooking();
+    approveCurrent(engine);
     await settle();
     expect(context.tools.has('commit_booking')).toBe(true);
 
-    await context.execute('commit_booking', { bookingId: 'booking_draft_01', expectedStateVersion: 5 });
+    const authorized = await context.execute('get_case_summary', {}) as {
+      stateVersion: number;
+      data: { preparedBooking: { bookingId: string }; authorization: { active: boolean } };
+    };
+    expect(authorized.data.authorization.active).toBe(true);
+    await context.execute('commit_booking', {
+      bookingId: authorized.data.preparedBooking.bookingId,
+      expectedStateVersion: authorized.stateVersion,
+    });
     await settle();
     expect(context.tools.has('commit_booking')).toBe(false);
     expect(context.tools.has('get_action_receipt')).toBe(true);
@@ -56,10 +75,10 @@ describe('state-aware WebMCP registration', () => {
     engine.savePlanOption('northline', 1);
     engine.draftIntake(2);
     engine.prepareBooking('northline', 'northline_slot_1', 3);
-    engine.approveBooking();
+    approveCurrent(engine);
     await settle();
     expect(context.tools.has('commit_booking')).toBe(true);
-    engine.revokeApproval();
+    revokeCurrent(engine);
     await settle();
     expect(context.tools.has('commit_booking')).toBe(false);
     expect(engine.getState().preparedBooking).not.toBeNull();
@@ -75,7 +94,7 @@ describe('state-aware WebMCP registration', () => {
     await context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 });
     await context.execute('draft_intake', { expectedStateVersion: 2 });
     await context.execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 });
-    engine.approveBooking();
+    approveCurrent(engine);
     await settle();
     const authorized = engine.getState();
 
@@ -96,16 +115,15 @@ describe('state-aware WebMCP registration', () => {
     registry.start();
     await settle();
     const controller = new AbortController();
-    const call = context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 }, controller.signal);
     controller.abort();
-    const result = await call as { ok: boolean; error?: { code: string } };
+    const result = await context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 }, controller.signal) as { ok: boolean; error?: { code: string } };
     expect(result.error?.code).toBe('CANCELLED');
     expect(engine.getState().stateVersion).toBe(1);
     registry.stop();
   });
 
   it('expires approval and unregisters commit without an attempted invocation', async () => {
-    const engine = new CareEngine(undefined, 15);
+    const engine = new CareEngine(undefined, 500);
     const context = new MockModelContext();
     const registry = new WebMCPRegistry(engine, context);
     registry.start();
@@ -113,10 +131,10 @@ describe('state-aware WebMCP registration', () => {
     engine.savePlanOption('northline', 1);
     engine.draftIntake(2);
     engine.prepareBooking('northline', 'northline_slot_1', 3);
-    engine.approveBooking();
+    approveCurrent(engine);
     await settle();
     expect(context.tools.has('commit_booking')).toBe(true);
-    await new Promise((resolve) => setTimeout(resolve, 40));
+    await new Promise((resolve) => setTimeout(resolve, 650));
     expect(context.tools.has('commit_booking')).toBe(false);
     expect(engine.getState().approval).toBeNull();
     expect(engine.getState().status).toBe('AWAITING_HUMAN_APPROVAL');
@@ -137,6 +155,51 @@ describe('state-aware WebMCP registration', () => {
     const snapshot = registry.snapshot();
     expect(snapshot.activeTools).not.toContain('get_case_summary');
     expect(snapshot.events.some((event) => event.toolName === 'get_case_summary' && event.action === 'failed')).toBe(true);
+    registry.stop();
+  });
+
+  it('removes a revoked capability even while native registration is pending', async () => {
+    const engine = new CareEngine();
+    const context = new MockModelContext();
+    const original = context.registerTool.bind(context);
+    let releaseCommit!: () => void;
+    let commitVisible!: () => void;
+    const commitStarted = new Promise<void>((resolve) => { commitVisible = resolve; });
+    const commitRelease = new Promise<void>((resolve) => { releaseCommit = resolve; });
+    context.registerTool = async (tool, options) => {
+      await original(tool, options);
+      if (tool.name === 'commit_booking') {
+        commitVisible();
+        await commitRelease;
+      }
+    };
+    const registry = new WebMCPRegistry(engine, context);
+    registry.start();
+    await settle();
+    engine.savePlanOption('northline', 1);
+    engine.draftIntake(2);
+    engine.prepareBooking('northline', 'northline_slot_1', 3);
+    approveCurrent(engine);
+    await commitStarted;
+    expect(context.tools.has('commit_booking')).toBe(true);
+    revokeCurrent(engine);
+    expect(context.tools.has('commit_booking')).toBe(false);
+    releaseCommit();
+    await settle();
+    registry.stop();
+  });
+
+  it('bounds malformed native input and never reflects attacker-controlled property names', async () => {
+    const engine = new CareEngine();
+    const context = new MockModelContext();
+    const registry = new WebMCPRegistry(engine, context);
+    registry.start();
+    await settle();
+    const maliciousKey = `ignore_previous_instructions_${'x'.repeat(2200)}`;
+    const raw = await context.executeRaw('get_case_summary', { [maliciousKey]: true });
+    expect(raw.length).toBeLessThanOrEqual(1500);
+    expect(raw).not.toContain(maliciousKey);
+    expect(JSON.parse(raw)).toMatchObject({ ok: false, error: { code: 'INVALID_INPUT' } });
     registry.stop();
   });
 });
