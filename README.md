@@ -6,7 +6,7 @@ ReferralArc demonstrates **capability-lifetime consent**: a browser agent can pr
 
 ![ReferralArc exact authorization lease](docs/screenshots/capability-leased-1440x900.jpg)
 
-_Release-candidate capture from Chrome for Testing 151 using native WebMCP. The final video independently shows the browser's live Site tools._
+_Release-candidate capture from Chrome for Testing 151 using native WebMCP. The final video will independently show the browser's live Site tools._
 
 The browser-visible app and its WebMCP tools share one deterministic domain engine. An agent can find eligible options, compare logistics, save a plan, draft intake, and prepare an appointment. The consequential commit tool does not exist until the exact draft is visibly authorized. Approval revocation, draft changes, automatic expiry, reset, and successful commit remove it again.
 
@@ -18,7 +18,11 @@ Open /demo, then use the prompt card with a WebMCP-capable agent:
 
 > Coordinate Maya’s ordered MRI using every recorded constraint. Compare eligible options, draft only the minimum intake, prepare the best appointment, and stop before confirmation.
 
-The agent should select Northline Imaging Studio and stop at the authorization boundary. Review the exact location, date, estimated patient cost, accessibility, synthetic coverage signal, data-use disclosure, and ten-minute authorization window. Select Authorize this exact appointment. In a supported browser, the capability rail records the successful native registration of `commit_booking`. On the next turn, say:
+The agent should select Northline Imaging Studio and stop at the authorization boundary. Review the exact location, date, estimated patient cost, accessibility, synthetic coverage signal, data-use disclosure, and ten-minute authorization window. Select Approve this exact appointment. In a supported browser, the capability rail records the successful native registration of `commit_booking`. On the next turn, say:
+
+![Exact human decision before capability creation](docs/screenshots/human-decision-1440x900.jpg)
+
+_Edit or Reject invalidates the prepared draft; only Approve creates the exact, expiring `commit_booking` lease._
 
 > Re-read the current case state, then confirm only the exact appointment I approved.
 
@@ -42,7 +46,7 @@ Downstream coordination crosses search, availability, coverage signals, constrai
 
 This is not a generic chat wrapper. The implementation registers native tools directly through `document.modelContext.registerTool`. Tool availability is reconciled with page state. An `AbortController` owns each registration lifetime, which is the current API’s unregistration mechanism. Tools use the same-origin default, schemas are closed, handlers validate again at runtime, and contract tests keep representative maximum-valid results below Chrome’s recommended 1,500-character context budget.
 
-All ten read and reversible-preparation tools are registered when the page starts, so the golden path does not depend on immediate mid-turn tool rediscovery. The high-consequence commit tool remains dynamically gated. The project follows the current [W3C Community Group draft](https://webmachinelearning.github.io/webmcp/) and [Chrome imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api). WebMCP is experimental and is not a W3C Standard.
+Nine read or early reversible-draft capabilities register when the page starts. `prepare_booking` is absent until a plan option is selected, then appears through a fresh registry observation. The high-consequence `commit_booking` remains absent until exact visible approval. The project follows the current [W3C Community Group draft](https://webmachinelearning.github.io/webmcp/) and [Chrome imperative API documentation](https://developer.chrome.com/docs/ai/webmcp/imperative-api). WebMCP is experimental and is not a W3C Standard.
 
 ## Safety model
 
@@ -90,7 +94,7 @@ npm run build
 npm run test:e2e
 ~~~
 
-The suite covers deterministic ranking, administrative prerequisites, alternative providers, mutation boundaries, replay and stale-state rejection, exact approval, automatic expiry, cancellation, idempotency, actual-registration truth, metadata and result budgets, hostile input, corpus drift, prompt-injection fixtures, accessibility, mobile overflow, and the complete agent and human paths.
+The current Vitest suite passes 90 unit, contract, security, and eval tests; Playwright adds 18 end-to-end tests. The 65-record eval corpus uses the brief-mandated evidence fields and covers every A-T scenario category. Twenty-nine representative records execute deterministic state transitions and forbidden-action checks against the real seeded engine and tool validators. Records labeled MODEL_OR_ENVIRONMENT_ONLY still require separately reported real-agent or browser trials; the repository does not claim a 65-prompt agent pass rate.
 
 With a Chrome 149+ executable, also run the actual browser API lifecycle. First start the production build:
 
@@ -142,3 +146,5 @@ Useful handoff documents:
 ReferralArc is a working project name selected after a quick exact-name web scan found no obvious healthcare software collision. That scan is not trademark clearance; registry, domain, store, and counsel review are required before public product launch.
 
 Released under the [MIT License](LICENSE).
+
+Bundled runtime attributions and exact package-supplied license texts are recorded in [Third-party notices](THIRD_PARTY_NOTICES.md); the matching [plain-text notice](public/third-party-notices.txt) is packaged for `/third-party-notices.txt` in the final deployment.

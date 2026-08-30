@@ -34,10 +34,12 @@ describe('state-aware WebMCP registration', () => {
     await settle();
     expect(context.tools.has('commit_booking')).toBe(false);
     expect(context.tools.has('draft_intake')).toBe(true);
-    expect(context.tools.has('prepare_booking')).toBe(true);
+    expect(context.tools.has('prepare_booking')).toBe(false);
+    expect(context.tools.size).toBe(9);
 
     await context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 });
     await settle();
+    expect(context.tools.has('prepare_booking')).toBe(true);
     await context.execute('draft_intake', { expectedStateVersion: 2 });
 
     const prepared = await context.execute('prepare_booking', { locationId: 'northline', slotId: 'northline_slot_1', expectedStateVersion: 3 }) as {
@@ -62,7 +64,26 @@ describe('state-aware WebMCP registration', () => {
     });
     await settle();
     expect(context.tools.has('commit_booking')).toBe(false);
+    expect(context.tools.has('prepare_booking')).toBe(false);
     expect(context.tools.has('get_action_receipt')).toBe(true);
+    registry.stop();
+  });
+
+  it('adds prepare only after plan selection and removes it on reset', async () => {
+    const engine = new CareEngine();
+    const context = new MockModelContext();
+    const registry = new WebMCPRegistry(engine, context);
+    registry.start();
+    await settle();
+    expect(context.tools.has('prepare_booking')).toBe(false);
+
+    await context.execute('save_plan_option', { locationId: 'northline', expectedStateVersion: 1 });
+    await settle();
+    expect(context.tools.has('prepare_booking')).toBe(true);
+
+    engine.reset();
+    await settle();
+    expect(context.tools.has('prepare_booking')).toBe(false);
     registry.stop();
   });
 
@@ -162,15 +183,20 @@ describe('state-aware WebMCP registration', () => {
     const engine = new CareEngine();
     const context = new MockModelContext();
     const original = context.registerTool.bind(context);
-    let releaseCommit!: () => void;
     let commitVisible!: () => void;
     const commitStarted = new Promise<void>((resolve) => { commitVisible = resolve; });
-    const commitRelease = new Promise<void>((resolve) => { releaseCommit = resolve; });
     context.registerTool = async (tool, options) => {
       await original(tool, options);
       if (tool.name === 'commit_booking') {
         commitVisible();
-        await commitRelease;
+        await new Promise<void>((_resolve, reject) => {
+          const rejectOnAbort = () => {
+            const reason = options?.signal?.reason;
+            reject(reason instanceof Error ? reason : new DOMException('Registration aborted.', 'AbortError'));
+          };
+          if (options?.signal?.aborted) rejectOnAbort();
+          else options?.signal?.addEventListener('abort', rejectOnAbort, { once: true });
+        });
       }
     };
     const registry = new WebMCPRegistry(engine, context);
@@ -184,8 +210,10 @@ describe('state-aware WebMCP registration', () => {
     expect(context.tools.has('commit_booking')).toBe(true);
     revokeCurrent(engine);
     expect(context.tools.has('commit_booking')).toBe(false);
-    releaseCommit();
     await settle();
+    const commitEvents = registry.snapshot().events.filter((event) => event.toolName === 'commit_booking');
+    expect(commitEvents.some((event) => event.action === 'removed')).toBe(true);
+    expect(commitEvents.some((event) => event.action === 'failed')).toBe(false);
     registry.stop();
   });
 

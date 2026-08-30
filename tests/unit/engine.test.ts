@@ -130,6 +130,50 @@ describe('deterministic care coordination engine', () => {
     expect(engine.getState().preparedBooking).toBeNull();
   });
 
+  it.each([
+    ['edit_booking', (engine: CareEngine, bookingId: string, version: number) => engine.editBooking(bookingId, version)],
+    ['reject_booking', (engine: CareEngine, bookingId: string, version: number) => engine.rejectBooking(bookingId, version)],
+  ])('records an exact human %s decision while preserving reversible work', (action, decide) => {
+    const engine = new CareEngine();
+    const bookingId = prepare(engine);
+    const before = engine.getState();
+    const result = decide(engine, bookingId, before.stateVersion);
+    const after = engine.getState();
+
+    expect(result.ok).toBe(true);
+    expect(result.receiptId).toBeTruthy();
+    expect(after.history.at(-1)).toMatchObject({ action, actor: 'human' });
+    expect(after.receipts.at(-1)).toMatchObject({ action, actor: 'human' });
+    expect(after.selectedLocationId).toBe(before.selectedLocationId);
+    expect(after.intakeDraft).toEqual(before.intakeDraft);
+    expect(after.preparedBooking).toBeNull();
+    expect(after.approval).toBeNull();
+    expect(after.appointment).toBeNull();
+    expect(after.status).toBe('INTAKE_DRAFTED');
+    expect(result.nextAvailableActions).not.toContain('commit_booking');
+  });
+
+  it.each([
+    ['edit', (engine: CareEngine, bookingId: string, version: number) => engine.editBooking(bookingId, version)],
+    ['reject', (engine: CareEngine, bookingId: string, version: number) => engine.rejectBooking(bookingId, version)],
+  ])('binds the visible %s decision to the exact draft and reviewed version', (_label, decide) => {
+    const engine = new CareEngine();
+    const bookingId = prepare(engine);
+    const reviewed = engine.getState();
+
+    expect(decide(engine, 'booking_draft_wrong', reviewed.stateVersion).error?.code).toBe('REVIEW_CHANGED');
+    expect(engine.getState()).toEqual(reviewed);
+
+    authorize(engine);
+    revokeReviewed(engine);
+    const advanced = engine.getState();
+    const receiptCount = advanced.receipts.length;
+    expect(decide(engine, bookingId, reviewed.stateVersion).error?.code).toBe('STALE_STATE');
+    expect(engine.getState().preparedBooking?.id).toBe(bookingId);
+    expect(engine.getState().receipts).toHaveLength(receiptCount);
+    expect(engine.getState().appointment).toBeNull();
+  });
+
   it('revokes authorization without discarding the reviewed draft', () => {
     const engine = new CareEngine();
     prepare(engine);
@@ -159,6 +203,15 @@ describe('deterministic care coordination engine', () => {
     engine.savePlanOption('northline', 1);
     engine.reset();
     expect(engine.getState()).toEqual(createInitialState(2, 3));
+  });
+
+  it('exposes prepare only after plan selection and removes it on reset', () => {
+    const engine = new CareEngine();
+    expect(engine.getCaseSummary().nextAvailableActions).not.toContain('prepare_booking');
+    const saved = engine.savePlanOption('northline', engine.getState().stateVersion);
+    expect(saved.nextAvailableActions).toContain('prepare_booking');
+    engine.reset();
+    expect(engine.getCaseSummary().nextAvailableActions).not.toContain('prepare_booking');
   });
 
   it('uses a new workflow epoch so old commit identifiers cannot replay after reset', () => {

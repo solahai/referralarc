@@ -16,7 +16,7 @@ Status key: **PASS** is present and repository-verifiable, **MANUAL** requires e
 | Web app powered by the required WebMCP API | **PASS** | Native `document.modelContext.registerTool`, typed tools, lifecycle signals, state-aware registration, and shared visual/domain state. |
 | Works consistently and matches description/video | **WATCH / MANUAL** | The current working tree has deterministic automated coverage; rerun every gate on the exact release and make the final video match it. |
 | Working live URL accessible in ChatGPT’s in-app browser or Chrome with WebMCP enabled | **WATCH — BLOCKER** | A public HTTPS baseline exists, but it still serves the previous fixture/release. Deploy and verify the exact final build before submission. |
-| Text explains WebMCP fit, UX improvement, newly possible behavior, and implementation | **PASS** | `docs/SUBMISSION.md` has dedicated sections for all four prompts. |
+| Text explains WebMCP fit, UX improvement, newly possible behavior, and implementation | **PASS** | `docs/SUBMISSION.md` covers all four prompts; its shared-workspace bullets explicitly explain the UX improvement. |
 | Public source repository with all source, assets, and run instructions | **PASS** | The exact source, assets, and run instructions are published under the visible MIT license at [github.com/solahai/referralarc](https://github.com/solahai/referralarc). |
 | Open-source license visible at repository top/About | **PASS** | MIT license is committed and detected by GitHub. |
 | Public YouTube demo with audio, strictly under three minutes | **MANUAL — BLOCKER** | Record the 2:20 script, publish publicly, and add the URL to Devpost and `docs/SUBMISSION.md`. Judges need not watch beyond three minutes. |
@@ -38,17 +38,19 @@ Status key: **PASS** is present and repository-verifiable, **MANUAL** requires e
 
 ## Stage-two rubric audit
 
+The Official Rules weight all four criteria equally; ties are resolved by comparing them in the listed order, making WebMCP Leverage the first tie-break.
+
 ### WebMCP Leverage — first tie-break
 
 Strong evidence:
 
 - The decisive capability, `commit_booking`, is absent before authorization, registered for one exact prepared draft, and removed after revocation, expiry, state invalidation, reset, or use.
 - The page shows the actual successful native registry, not merely desired application state.
-- Ten read/reversible-draft capabilities are discoverable when the page starts because immediate agent rediscovery after each registration change is not guaranteed.
+- Nine read or early reversible-draft capabilities are discoverable when the page starts; `prepare_booking` appears only after a plan selection, which visibly demonstrates another meaningful state-aware registration boundary.
 - Registration lifetime and invocation cancellation use separate signals; the handler independently rechecks authorization immediately before commitment.
 - Tool names, descriptions, parameters, schemas, annotations, and maximum valid outputs are budget- and contract-tested.
 
-Final local production release-candidate evidence: on August 30, 2026 at 21:57:16Z, the automated smoke test passed in Chrome 151.0.7922.34 with native `registerTool`, `getTools()`, and `executeTool()` functions. It verified ten initial read/reversible tools, commit absent before authorization, present afterward, removed after use, receipt availability, structured booking handles in both runs, and a consequential-cancellation probe whose returned result was consistent with confirmed state. Repeat the smoke on the exact deployed SHA before submission. A separate repeated natural-language-agent report would strengthen the evidence but is not an Official Rules requirement. Do not claim that every browser or agent product supports WebMCP.
+The exact final local production build passed Chrome 151 at 23:27:36Z. The smoke verifies the nine-tool initial surface, `prepare_booking` absent before selection and present afterward, commit absent before approval and present afterward, post-use removal, receipt availability, structured handles, pre-abort safety, and late-cancellation reconciliation through structured state and receipt. Repeat it on the exact deployed SHA before submission. A separate repeated natural-language-agent report would strengthen the evidence but is not an Official Rules requirement. Do not claim that every browser or agent product supports WebMCP.
 
 ### Execution
 
@@ -56,7 +58,7 @@ Strong evidence:
 
 - One deterministic golden path and a complete no-WebMCP human fallback reach the same receipt through the same domain engine.
 - Repeated exact preparation calls are idempotent no-ops and cannot erase prepared or authorized state.
-- True revocation removes authorization while preserving the exact reviewed draft; reject-and-revise remains a separate destructive choice.
+- True revocation removes authorization while preserving the exact reviewed draft; Edit reopens reversible work and Reject records a separate exact human decision.
 - Automatic expiry actively updates state and removes the capability without waiting for a failed call.
 - Alternative providers, prerequisites, eligible slots, excluded reasons, provenance, and visible state remain consistent.
 - Typecheck, lint, unit, contract, security, accessibility, build, and end-to-end gates are automated.
@@ -73,7 +75,7 @@ Strong evidence:
 
 Remaining evidence risk: this synthetic build demonstrates feasibility, not time saved, patient outcomes, production integration, HIPAA compliance, or buyer validation. Do not imply otherwise.
 
-### Creativity and Ambition
+### Creativity & Ambition
 
 Strong evidence:
 
@@ -93,7 +95,7 @@ Remaining differentiation risk: referral scheduling is a crowded category. Every
 - The accessibility audit covers the full landmark structure rather than suppressing the `region` rule.
 - The mobile and no-WebMCP fallback explicitly show truthful native availability rather than simulated registration.
 - The framework and build toolchain were upgraded together until the full production-and-development dependency audit reported zero known vulnerabilities.
-- Chrome 151 testing first exposed two browser-boundary compatibility defects that the in-page harness could not: the earlier recorded build invoked the callback with one argument and canceled an invocation when its registration was removed before the callback settled. The current specification supplies a second invocation-options signal, and Chrome documentation says version 153 no longer breaks in-flight work on unregistration. The August 30 local candidate now passes the structured-handle and consequential-cancellation consistency probes.
+- Chrome 151 testing exposed browser-boundary behavior that the in-page harness could not: it invoked the callback with one argument, and a caller can observe a late abort after a synchronous commit already landed. The current specification supplies a second invocation-options signal, and Chrome documentation says version 153 no longer breaks in-flight work on unregistration. The final local smoke proves pre-aborted writes stay unchanged and reconciles late consequential cancellation through structured state and receipt; idempotency protects retries.
 
 ## Official submission blockers
 
@@ -107,7 +109,7 @@ Remaining differentiation risk: referral scheduling is a crowded category. Every
 ## Internal high-value evidence and controls
 
 1. Repeat the passing native smoke against the exact deployed SHA and capture that full capability lifecycle for the video.
-2. Optionally run the 65-case prompt corpus repeatedly with a real agent and publish raw traces, model/version, trial count, and selection/argument/sequence/stop-boundary pass rates. CI validates the corpus contract, not model performance.
+2. The 65-record corpus has full schema and A-T category contracts, and 29 representative records execute deterministic engine/tool-validator transitions. Nine records are explicitly model/environment-only. Optionally run all 65 prompts repeatedly with a real agent and publish raw traces, model/version, trial count, and selection/argument/sequence/stop-boundary pass rates; deterministic CI evidence is not model performance.
 3. Native screenshots and evidence are current for the final local candidate; confirm or refresh them, the social card, and Lighthouse measurements against the exact deployed SHA.
 4. Tag and retain the exact submitted commit for reproducibility.
 

@@ -22,22 +22,23 @@ The WebMCP registry calls document.modelContext.registerTool directly. The curre
 
 The registration surface is reconciled against the latest domain state:
 
-- Initial order: seven read tools plus three reversible preparation tools
+- Initial order: seven read tools plus `save_plan_option` and `draft_intake`; `prepare_booking` is absent
+- Selected plan: `prepare_booking` is registered
 - Prepared draft: the visible authorization UI appears; `commit_booking` remains absent
 - Exact authorization: commit_booking is registered
-- Rejection, explicit revocation, reset, automatic expiry, draft replacement, or success: commit_booking is unregistered
+- Edit, rejection, explicit revocation, reset, automatic expiry, draft replacement, or success: commit_booking is unregistered
 - First completed write: get_action_receipt appears
 - Confirmed appointment: preparation and commit tools are removed; get_action_receipt remains
 
-Read and reversible-preparation tools stay registered from page start because the current draft does not guarantee immediate browser-agent rediscovery after each call. Their handlers enforce prerequisites and stale-state checks. Dynamic registration is reserved for the consequential commit boundary. The registry does not churn unchanged tools, tracks pending controllers, derives the rail only from successful registrations, exposes failure events, recomputes desired tools from the latest state before and after awaited registrations, and rechecks availability inside every handler.
+All reads and the two early reversible drafts stay registered from page start. `prepare_booking` is intentionally state-aware and appears only after selection; the golden proof waits for a fresh registry observation. Handlers still enforce prerequisites and stale-state checks. The registry does not churn unchanged tools, tracks pending controllers, derives the rail only from successful registrations, exposes failure events, recomputes desired tools from the latest state before and after awaited registrations, and rechecks availability inside every handler.
 
 Agent frameworks may retry a successful call after a transport or observation ambiguity. Repeating the current selected option, intake draft, prepared booking, or active authorization is therefore a domain no-op: it returns the current version and preserves later work. Revocation is also distinct from rejection: it removes the capability lease but retains the reviewed booking draft.
 
-Immediate agent rediscovery after a tool change is not guaranteed by the draft. The entire reversible preparation sequence is therefore discoverable in the first turn. After authorization, the golden path deliberately uses a subsequent user turn: “Re-read the current case state, then confirm only the exact appointment I approved.” The capability rail independently proves that commit_booking entered the page registry.
+Immediate agent rediscovery after a tool change is not guaranteed by the draft. ReferralArc therefore keeps reads and early reversible drafts available from page start and explicitly waits for `prepare_booking` after selection. After approval, the golden path deliberately uses a subsequent user turn: “Re-read the current case state, then confirm only the exact appointment I approved.” The capability rail independently proves each state-aware tool entered the page registry.
 
 ## Two cancellation signals
 
-The signal passed with `registerTool` controls registration lifetime. The current Community Group draft passes an invocation-options object containing a second `signal` to `execute`; the adapter accepts that current shape while remaining compatible with the recorded Chrome 151 environment, which invoked the callback with only the input object. That Chrome 151 run also canceled an invocation when its registration signal was aborted before the callback settled. Chrome’s current documentation says that, as of Chrome 153, unregistering no longer breaks in-flight executions. ReferralArc therefore preserves the Chrome 151 success-result compatibility path while still re-validating exact approval and state version immediately before its synchronous state transition. Cancellation after an irreversible production-side effect could not be treated as rollback; a real integration would also require a server idempotency key.
+The signal passed with `registerTool` controls registration lifetime. The current Community Group draft passes an invocation-options object containing a second `signal` to `execute`; the adapter accepts that current shape while remaining compatible with the recorded Chrome 151 environment, which invoked the callback with only the input object. Chrome’s current documentation says that, as of Chrome 153, unregistering no longer breaks in-flight executions. ReferralArc re-validates exact approval and state version immediately before its synchronous state transition. The native smoke separately proves a pre-aborted write leaves state unchanged and reconciles a late consequential abort through a fresh structured case read plus the receipt. Chrome 151 can return an abort after the synchronous callback already committed, so cancellation is not presented as rollback; idempotency protects retries, and a real integration would also require a server idempotency key and reconciliation endpoint.
 
 ## Tool contracts
 

@@ -27,6 +27,17 @@ const FHIR_URNS = {
   appointment: 'urn:uuid:1b9d6a10-e83b-4ff7-93f4-7d76f16c1004',
 } as const;
 
+let browserSessionEngine: CareEngine | null = null;
+
+function getSessionEngine(): CareEngine {
+  // The browser module survives ordinary client navigation, so a person can
+  // visit the explainer and return without losing the workflow. Never reuse a
+  // mutable engine during server rendering, where it could cross requests.
+  if (typeof window === 'undefined') return new CareEngine(createInitialState());
+  browserSessionEngine ??= new CareEngine(createInitialState());
+  return browserSessionEngine;
+}
+
 function formatSlot(value: string): string {
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short',
@@ -40,7 +51,7 @@ function formatSlot(value: string): string {
 }
 
 function useCareWorkspace() {
-  const [engine] = useState(() => new CareEngine(createInitialState()));
+  const [engine] = useState(getSessionEngine);
   const [state, setState] = useState<CareState>(() => engine.getState());
   const [supported, setSupported] = useState(false);
   const [activeTools, setActiveTools] = useState<ToolName[]>([]);
@@ -253,7 +264,7 @@ function OptionCard({ state, onSave }: { state: CareState; onSave: (id: string) 
   return (
     <section aria-labelledby="matches-title">
       <div className="workspace-section-heading">
-        <div><p className="eyebrow">{assessed} imaging sites assessed · {options.length} eligible</p><h2 id="matches-title">{selected ? 'Saved to the working plan' : 'Best administrative matches'}</h2></div>
+        <div><p className="eyebrow">{assessed} imaging sites assessed · {options.length} eligible</p><h2 id="matches-title">{state.appointment ? 'Appointment confirmed' : selected ? 'Saved to the working plan' : 'Best administrative matches'}</h2></div>
         <span className="status-pill">All hard constraints applied</span>
       </div>
       <article className={`recommended-option ${selected ? 'selected' : ''}`}>
@@ -333,8 +344,8 @@ function Preparation({ state, onDraft, onPrepare }: { state: CareState; onDraft:
       <article className="prep-card">
         <div className="prep-icon">03</div><h3>Booking draft</h3>
         <p>{selected && eligibleSlot ? `Prepare a non-binding slot at ${selected.name}.` : 'Save a care option before preparing a booking.'}</p>
-        {eligibleSlots.length > 0 && <label className="slot-picker"><span>Appointment slot</span><select value={slotId} disabled={Boolean(state.preparedBooking)} onChange={(event) => setSlotId(event.target.value)}>{eligibleSlots.map((slot) => <option key={slot.id} value={slot.id}>{formatSlot(slot.startsAt)}</option>)}</select></label>}
-        <button className="outline-button" disabled={!state.intakeDraft || !eligibleSlot || Boolean(state.preparedBooking)} onClick={() => onPrepare(slotId)}>
+        {eligibleSlots.length > 0 && <label className="slot-picker"><span>Appointment slot</span><select data-focus-target="booking-slot" value={slotId} disabled={Boolean(state.preparedBooking)} onChange={(event) => setSlotId(event.target.value)}>{eligibleSlots.map((slot) => <option key={slot.id} value={slot.id}>{formatSlot(slot.startsAt)}</option>)}</select></label>}
+        <button data-focus-target="prepare-booking" className="outline-button" disabled={!state.intakeDraft || !eligibleSlot || Boolean(state.preparedBooking)} onClick={() => onPrepare(slotId)}>
           {state.preparedBooking ? 'Prepared for review' : 'Prepare booking'}
         </button>
       </article>
@@ -352,11 +363,25 @@ function ApprovalCountdown({ expiresAt }: { expiresAt: string }) {
   return <>{Math.floor(secondsRemaining / 60)}:{String(secondsRemaining % 60).padStart(2, '0')} remaining</>;
 }
 
+function currentRegistrationFailure(state: CareState, events: ToolEvent[], activeTools: ToolName[]): ToolEvent | undefined {
+  const desired = new Set(TOOL_DEFINITIONS.filter((tool) => tool.available(state)).map((tool) => tool.name));
+  const active = new Set(activeTools);
+  const seen = new Set<ToolName>();
+  for (const event of events) {
+    if (seen.has(event.toolName)) continue;
+    seen.add(event.toolName);
+    if (event.action === 'failed' && desired.has(event.toolName) && !active.has(event.toolName)) return event;
+  }
+  return undefined;
+}
+
 function CapabilityBoundary({ state, supported, registrationFailed, activeTools, onCopyPrompt }: { state: CareState; supported: boolean; registrationFailed: boolean; activeTools: ToolName[]; onCopyPrompt: () => void }) {
   const commitAvailable = activeTools.includes('commit_booking');
   const nativeReady = supported && activeTools.length > 0 && !registrationFailed;
   const safeToolCount = activeTools.filter((name) => name !== 'commit_booking').length;
-  const safeTitle = state.appointment ? 'Read + receipt' : 'Read + prepare';
+  const safeTitle = state.appointment
+    ? activeTools.includes('get_action_receipt') ? 'Read + receipt' : supported ? 'Read only' : 'Human fallback complete'
+    : activeTools.includes('prepare_booking') ? 'Read + prepare' : 'Read + early drafts';
   const phase = state.appointment
     ? commitAvailable ? 'removing' : 'consumed'
     : state.approval
@@ -396,7 +421,7 @@ function CapabilityBoundary({ state, supported, registrationFailed, activeTools,
   );
 }
 
-function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, onRevoke, onCommit }: { state: CareState; supported: boolean; commitAvailable: boolean; onApprove: () => void; onReject: () => void; onRevoke: () => void; onCommit: () => void }) {
+function ApprovalCard({ state, supported, commitAvailable, onApprove, onEdit, onReject, onRevoke, onCommit }: { state: CareState; supported: boolean; commitAvailable: boolean; onApprove: () => void; onEdit: () => void; onReject: () => void; onRevoke: () => void; onCommit: () => void }) {
   const cardRef = useRef<HTMLElement>(null);
   const preparedBookingId = state.preparedBooking?.id;
   const shouldReveal = Boolean(state.preparedBooking && !state.appointment);
@@ -430,6 +455,7 @@ function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, 
           <dl><div><dt>Scope</dt><dd>{state.preparedBooking.id}</dd></div><div><dt>Draft version</dt><dd>v{state.preparedBooking.stateVersion}</dd></div><div><dt>Effect</dt><dd>Confirm once</dd></div></dl>
         </div>
         <dl className="approval-details">
+          <div><dt>Service</dt><dd>{FICTIONAL_CASE.order.bodySite} · {FICTIONAL_CASE.order.protocol}</dd></div>
           <div><dt>Location</dt><dd>{location.name}</dd></div>
           <div><dt>Date & time</dt><dd>{formatSlot(slot.startsAt)}</dd></div>
           <div><dt>Estimated cost</dt><dd>${location.estimatedCost} · fictional</dd></div>
@@ -441,8 +467,8 @@ function ApprovalCard({ state, supported, commitAvailable, onApprove, onReject, 
         <div className="sharing-summary"><strong>Information used for this action</strong><span>Preferred name · text contact · access accommodation · referral ID · selected location and slot</span></div>
         <div className="approval-actions">
           {state.approval
-            ? <><button className="primary-button" onClick={onCommit}>Confirm authorized booking</button><button className="outline-button" onClick={onRevoke}>Revoke authorization</button></>
-            : <><button className="primary-button" onClick={onApprove}>Authorize this exact appointment</button><button className="outline-button" onClick={onReject}>Reject draft</button></>}
+            ? <><button type="button" className="primary-button" onClick={onCommit}>Confirm authorized booking</button><button type="button" className="outline-button" onClick={onRevoke}>Revoke authorization</button></>
+            : <><button type="button" className="primary-button" onClick={onApprove}>Approve this exact appointment</button><button type="button" className="outline-button" onClick={onEdit}>Edit appointment</button><button type="button" className="outline-button reject-button" onClick={onReject}>Reject appointment</button></>}
         </div>
       </div>
     </section>
@@ -470,8 +496,9 @@ function CapabilityRail({ state, supported, activeTools, activities, events, onC
   const tabRefs = useRef<Record<'tools' | 'activity', HTMLButtonElement | null>>({ tools: null, activity: null });
   const recent = activities[0];
   const prompt = state.approval ? COMMIT_PROMPT : GOLDEN_PROMPT;
-  const registrationEvent = events.find((event) => event.action === 'failed' && !activeTools.includes(event.toolName)) ?? events[0];
-  const registrationFailed = supported && events.some((event) => event.action === 'failed' && !activeTools.includes(event.toolName));
+  const failureEvent = currentRegistrationFailure(state, events, activeTools);
+  const registrationEvent = failureEvent ?? events[0];
+  const registrationFailed = supported && Boolean(failureEvent);
   const nativeReady = supported && activeTools.length > 0 && !registrationFailed;
   const chooseTab = (next: 'tools' | 'activity') => {
     setTab(next);
@@ -631,9 +658,17 @@ export default function ReferralArcApp() {
     if (!state.preparedBooking) return;
     flash(engine.approveBooking(state.preparedBooking.id, state.stateVersion).summary);
   };
+  const edit = () => {
+    if (!state.preparedBooking) return;
+    const result = engine.editBooking(state.preparedBooking.id, state.stateVersion);
+    flash(result.summary);
+    if (result.ok) window.requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-focus-target="booking-slot"]')?.focus());
+  };
   const reject = () => {
     if (!state.preparedBooking) return;
-    flash(engine.rejectBooking(state.preparedBooking.id, state.stateVersion).summary);
+    const result = engine.rejectBooking(state.preparedBooking.id, state.stateVersion);
+    flash(result.summary);
+    if (result.ok) window.requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-focus-target="prepare-booking"]')?.focus());
   };
   const revoke = () => {
     if (!state.approval) return;
@@ -647,7 +682,7 @@ export default function ReferralArcApp() {
     engine.reset();
     flash('Golden demo reset to the same synthetic facts with a fresh anti-replay workflow.');
   };
-  const registrationFailed = supported && events.some((event) => event.action === 'failed' && !activeTools.includes(event.toolName));
+  const registrationFailed = supported && Boolean(currentRegistrationFailure(state, events, activeTools));
 
   return (
     <main className="app-shell" data-hydrated={hydrated}>
@@ -661,6 +696,7 @@ export default function ReferralArcApp() {
       <section className="objective-bar">
         <div><p className="eyebrow">Downstream of a clinical decision</p><h1>Coordinate Maya&apos;s existing knee MRI order</h1><p className="case-source">Synthetic scenario · {FICTIONAL_CASE.order.bodySite} · {FICTIONAL_CASE.order.protocol} · {FICTIONAL_CASE.order.priority.toLowerCase()}<br />Order received Aug 25, 2026 · safety screening remains provider-owned</p></div>
         <div className="constraints" aria-label="Appointment constraints"><span>Weekdays · 3 PM or later</span><span>Wheelchair access</span><span>≤ 30 min</span><span>≤ $75</span></div>
+        <a className="mobile-start-link" href="#care-workspace">Start coordination <span aria-hidden="true">↓</span></a>
       </section>
 
       <CapabilityBoundary state={state} supported={supported} registrationFailed={registrationFailed} activeTools={activeTools} onCopyPrompt={() => { void copyPrompt(state.approval ? COMMIT_PROMPT : GOLDEN_PROMPT); }} />
@@ -680,7 +716,7 @@ export default function ReferralArcApp() {
           <div className="care-scroll">
             <div id="options"><OptionCard state={state} onSave={save} /></div>
             {state.selectedLocationId && <div id="prepare"><Preparation key={state.selectedLocationId} state={state} onDraft={draft} onPrepare={prepare} /></div>}
-            <ApprovalCard state={state} supported={supported} commitAvailable={activeTools.includes('commit_booking')} onApprove={approve} onReject={reject} onRevoke={revoke} onCommit={commit} />
+            <ApprovalCard state={state} supported={supported} commitAvailable={activeTools.includes('commit_booking')} onApprove={approve} onEdit={edit} onReject={reject} onRevoke={revoke} onCommit={commit} />
             <div id="receipt"><Receipt state={state} supported={supported} commitAvailable={activeTools.includes('commit_booking')} /></div>
             <details className="audit-history">
               <summary>State version history <span>{state.history.length}</span></summary>
@@ -690,6 +726,11 @@ export default function ReferralArcApp() {
         </section>
         <CapabilityRail state={state} supported={supported} activeTools={activeTools} activities={activities} events={events} onCopyPrompt={(prompt) => { void copyPrompt(prompt); }} />
       </div>
+
+      <footer className="demo-footer">
+        <span>ReferralArc uses fictional data and creates no real appointment.</span>
+        <a href="/third-party-notices.txt">Third-party notices</a>
+      </footer>
 
       {toast && <div className="toast" role="status" aria-live="polite">{toast}</div>}
       {promptDrawer && (

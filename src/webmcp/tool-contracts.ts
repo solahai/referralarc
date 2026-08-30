@@ -183,7 +183,7 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
     },
     annotations: { readOnlyHint: false, untrustedContentHint: true },
     kind: 'draft',
-    available: (state) => !state.appointment,
+    available: (state) => Boolean(state.selectedLocationId) && !state.appointment,
     execute: async (engine, input, signal) => {
       signal.throwIfAborted();
       return engine.prepareBooking(input.locationId as string, input.slotId as string, input.expectedStateVersion as number);

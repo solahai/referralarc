@@ -65,9 +65,9 @@ export default function Home() {
               <span className="preview-status">Prepared for review</span>
             </div>
             <div className="preview-tools">
-              <small>Agent capabilities</small>
+              <small>Capability boundary</small>
               {['compare_options', 'draft_intake', 'prepare_booking'].map((tool) => <code key={tool}>{tool}<i /></code>)}
-              <code className="locked">commit_booking <em>locked</em></code>
+              <code className="locked">commit_booking <em>Absent · not registered</em></code>
             </div>
           </div>
           <div className="approval-ribbon"><span>Human authorization changes what the agent can discover.</span><b>Absent → leased → removed</b></div>
@@ -81,7 +81,7 @@ export default function Home() {
 
       <section className="why-section" id="why">
         <div>
-          <p className="eyebrow">Thirty-second explanation</p>
+          <p className="eyebrow">Fifteen-second explanation</p>
           <h2>The page becomes a visible capability boundary.</h2>
           <p>Both human clicks and agent calls pass through the same validation, state machine, authorization checks, and audit logic.</p>
         </div>
@@ -98,7 +98,7 @@ export default function Home() {
 
       <footer className="landing-footer">
         <span>Demonstration using fictional healthcare data.</span>
-        <span>Administrative coordination only · No diagnosis or treatment advice</span>
+        <span>Administrative coordination only · No diagnosis or treatment advice · <a href="/third-party-notices.txt">Third-party notices</a></span>
       </footer>
     </main>
   );

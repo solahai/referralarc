@@ -2,7 +2,7 @@
 
 ## 0:00–0:14 — cold open on the native Site tools
 
-Open the exact deployed Site in the challenge browser on a prepared draft. Open the address-bar **Site tools → Available site tools** panel and show that `commit_booking` is absent. Select **Authorize this exact appointment**, reopen the native panel, and show the tool present. The in-page rail provides the matching successful-registration evidence.
+Open the exact deployed Site in the challenge browser on a prepared draft. Open the address-bar **Site tools → Available site tools** panel and show that `commit_booking` is absent. Select **Approve this exact appointment**, reopen the native panel, and show the tool present. The in-page rail provides the matching successful-registration evidence.
 
 “Synthetic care data; the native WebMCP lifecycle is real. These are native Site tools, not an embedded chatbot. No WebMCP tool can authorize confirmation. Maya reviewed one exact appointment, and the page just registered a one-use booking capability.”
 
@@ -22,11 +22,11 @@ Show 12 sites assessed, two eligible, the Northline/Thimblefern trade-off, and t
 
 Ask: “Save Northline, draft only the minimum information already on file, and prepare its earliest eligible slot. Stop before confirmation.”
 
-All ten read and reversible-preparation tools were available when the page started, so this path does not rely on mid-turn rediscovery. Show the shared visual state and live tool-call strip advance to the authorization boundary.
+Nine read or early reversible-draft tools were available when the page started. Show `prepare_booking` appear after the option is saved, then show the shared visual state and live tool-call strip advance to the approval boundary.
 
 ## 1:16–1:42 — visible authorization changes the registered tool surface
 
-Review exact facility, time, estimate, access, synthetic coverage signal, information used, and countdown. commit_booking is absent—not disabled. Select Authorize this exact appointment and show the scoped lease plus successful native registration event.
+Review exact facility, time, estimate, access, synthetic coverage signal, information used, and countdown. commit_booking is absent—not disabled. Select Approve this exact appointment and show the scoped lease plus successful native registration event.
 
 “Visible exact authorization changes what the browser agent can discover.”
 

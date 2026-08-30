@@ -41,7 +41,7 @@ for (const [name, width, height] of [
     await page.getByRole('button', { name: 'Save to care plan' }).click();
     await page.getByRole('button', { name: 'Draft from profile' }).click();
     await page.getByRole('button', { name: 'Prepare booking' }).click();
-    await page.getByRole('button', { name: 'Authorize this exact appointment' }).click();
+    await page.getByRole('button', { name: 'Approve this exact appointment' }).click();
     await page.locator('.commit-node').getByText('Registered now').waitFor();
     await page.locator('.toast').waitFor({ state: 'hidden' });
     await page.evaluate(() => window.scrollTo(0, 0));
@@ -81,7 +81,18 @@ await page.screenshot({
 await page.getByRole('button', { name: 'Save to care plan' }).click();
 await page.getByRole('button', { name: 'Draft from profile' }).click();
 await page.getByRole('button', { name: 'Prepare booking' }).click();
-await page.getByRole('button', { name: 'Authorize this exact appointment' }).click();
+await page.locator('.approval-card').scrollIntoViewIfNeeded();
+await page.locator('.toast').waitFor({ state: 'hidden' });
+for (const decision of ['Approve this exact appointment', 'Edit appointment', 'Reject appointment']) {
+  await page.getByRole('button', { name: decision, exact: true }).waitFor({ state: 'visible' });
+}
+await page.screenshot({
+  path: `${outputDir}/human-decision-1440x900.jpg`,
+  type: 'jpeg',
+  quality: 84,
+  fullPage: false,
+});
+await page.getByRole('button', { name: 'Approve this exact appointment' }).click();
 await page.locator('.commit-node').getByText('Registered now').waitFor();
 await page.locator('.toast').waitFor({ state: 'hidden' });
 await page.evaluate(() => window.scrollTo(0, 0));

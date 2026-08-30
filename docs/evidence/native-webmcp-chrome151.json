@@ -1,20 +1,26 @@
 {
-  "recordedAt": "2026-08-30T21:57:16Z",
-  "command": "CHROME_PATH=/path/to/chrome PREVIEW_URL=http://127.0.0.1:4173 npm run test:native",
+  "recordedAt": "2026-08-30T23:27:36Z",
+  "command": "CHROME_PATH=/path/to/chrome PREVIEW_URL=http://127.0.0.1:4187 npm run test:native",
   "browser": "151.0.7922.34",
   "api": {
     "registerTool": "function",
     "getTools": "function",
     "executeTool": "function"
   },
-  "initialToolCount": 10,
+  "initialToolCount": 9,
+  "prepareBeforeSelection": false,
+  "prepareAfterSelection": true,
   "commitBeforeAuthorization": false,
   "commitAfterAuthorization": true,
   "commitAfterUse": false,
   "receiptAfterUse": true,
   "bookingHandleFromStructuredOutput": true,
-  "consequentialCancellationConsistent": true,
+  "preAbortedWriteUnchanged": true,
+  "consequentialCancellationReconciled": true,
   "cancellationOutcome": "returned",
+  "cancellationDisposition": "committed_then_reconciled",
+  "cancellationReceiptPresent": true,
   "secondBookingHandleFromStructuredOutput": true,
-  "scope": "final local production release candidate; repeat on exact deployed SHA before submission"
+  "evidenceSemantics": "A pre-aborted native write left state unchanged. The late-abort commit probe was reconciled through structured case state and its receipt; idempotency protects retries.",
+  "scope": "exact final local production build; repeat on exact deployed SHA before submission"
 }

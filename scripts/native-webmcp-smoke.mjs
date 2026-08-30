@@ -34,10 +34,27 @@ try {
     return typeof raw === 'string' ? JSON.parse(raw) : raw;
   }, { name, input });
 
+  const expectedInitialTools = [
+    'get_case_summary',
+    'find_care_options',
+    'get_open_slots',
+    'check_coverage',
+    'compare_options',
+    'get_requirements',
+    'validate_readiness',
+    'save_plan_option',
+    'draft_intake',
+  ].sort();
+  await page.waitForFunction(async (expected) => {
+    const names = (await document.modelContext.getTools()).map((tool) => tool.name).sort();
+    return JSON.stringify(names) === JSON.stringify(expected);
+  }, expectedInitialTools);
   const initialTools = await getToolNames();
-  if (initialTools.length !== 10 || initialTools.includes('commit_booking')) {
+  const sortedInitialTools = [...initialTools].sort();
+  if (JSON.stringify(sortedInitialTools) !== JSON.stringify(expectedInitialTools)) {
     throw new Error(`Unexpected initial native surface: ${initialTools.join(', ')}`);
   }
+  const prepareBeforeSelection = initialTools.includes('prepare_booking');
 
   const initialCase = await execute('get_case_summary', {});
   const options = await execute('find_care_options', {});
@@ -46,6 +63,8 @@ try {
     locationId: best.locationId,
     expectedStateVersion: initialCase.stateVersion,
   });
+  await page.waitForFunction(async () => (await document.modelContext.getTools()).some((tool) => tool.name === 'prepare_booking'));
+  const prepareAfterSelection = (await getToolNames()).includes('prepare_booking');
   const intake = await execute('draft_intake', { expectedStateVersion: saved.stateVersion });
   const prepared = await execute('prepare_booking', {
     locationId: best.locationId,
@@ -57,7 +76,7 @@ try {
   const preparedTools = await getToolNames();
   if (preparedTools.includes('commit_booking')) throw new Error('commit_booking existed before human authorization.');
 
-  await page.getByRole('button', { name: 'Authorize this exact appointment' }).click();
+  await page.getByRole('button', { name: 'Approve this exact appointment' }).click();
   await page.locator('.commit-node').getByText('Registered now').waitFor();
   const authorizedTools = await getToolNames();
   if (!authorizedTools.includes('commit_booking')) throw new Error('commit_booking was not natively registered after authorization.');
@@ -78,30 +97,56 @@ try {
     throw new Error(`Unexpected completed native surface: ${completedTools.join(', ')}`);
   }
 
-  // Regression probe for an ambiguity found in Chrome 151: when mutation
-  // handlers contained artificial latency, an invocation could reject as
-  // aborted and still commit afterward. Consequential demo writes are now
-  // synchronous and atomic. Either the caller observes success and the
-  // appointment exists, or it observes cancellation and no appointment exists.
+  // Verify that a write cancelled before dispatch leaves shared state unchanged.
+  // Then probe Chrome 151's documented/observed late-abort ambiguity: that build
+  // can reject the caller after a synchronous callback already committed. The
+  // safe response is to reconcile through structured state and the receipt,
+  // while idempotency prevents a duplicate if the caller retries.
   await page.getByRole('button', { name: 'Reset demo' }).click();
   await page.waitForFunction(async () => {
     const names = (await document.modelContext.getTools()).map((tool) => tool.name);
-    return names.includes('save_plan_option') && !names.includes('commit_booking');
+    return names.includes('save_plan_option') && !names.includes('prepare_booking') && !names.includes('commit_booking');
   });
   const resetCase = await execute('get_case_summary', {});
+  const preAbortedProbe = await page.evaluate(async (expectedStateVersion) => {
+    const tool = (await document.modelContext.getTools()).find((candidate) => candidate.name === 'save_plan_option');
+    if (!tool) throw new Error('save_plan_option missing before pre-abort probe.');
+    const controller = new AbortController();
+    controller.abort();
+    try {
+      const raw = await document.modelContext.executeTool(
+        tool,
+        JSON.stringify({ locationId: 'northline', expectedStateVersion }),
+        { signal: controller.signal },
+      );
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      return { status: 'returned', ok: parsed.ok };
+    } catch (error) {
+      return { status: error instanceof DOMException && error.name === 'AbortError' ? 'aborted' : 'rejected' };
+    }
+  }, resetCase.stateVersion);
+  await new Promise((resolve) => setTimeout(resolve, 80));
+  const afterPreAborted = await execute('get_case_summary', {});
+  const preAbortedWriteUnchanged = preAbortedProbe.status === 'aborted'
+    && afterPreAborted.stateVersion === resetCase.stateVersion
+    && !afterPreAborted.data.selectedLocationId;
+  if (!preAbortedWriteUnchanged) {
+    throw new Error(`Pre-aborted native write changed state: ${JSON.stringify({ preAbortedProbe, afterPreAborted })}`);
+  }
   const resetOptions = await execute('find_care_options', {});
   const resetBest = resetOptions.data.finalists[0];
   const resetSaved = await execute('save_plan_option', {
     locationId: resetBest.locationId,
     expectedStateVersion: resetCase.stateVersion,
   });
+  await page.waitForFunction(async () => (await document.modelContext.getTools()).some((tool) => tool.name === 'prepare_booking'));
   const resetIntake = await execute('draft_intake', { expectedStateVersion: resetSaved.stateVersion });
   const resetPrepared = await execute('prepare_booking', {
     locationId: resetBest.locationId,
     slotId: resetBest.earliestSlot.id,
     expectedStateVersion: resetIntake.stateVersion,
   });
-  await page.getByRole('button', { name: 'Authorize this exact appointment' }).click();
+  await page.getByRole('button', { name: 'Approve this exact appointment' }).click();
   await page.locator('.commit-node').getByText('Registered now').waitFor();
   const resetAuthorized = await execute('get_case_summary', {});
   const cancellationProbe = await page.evaluate(async ({ bookingId: approvedBookingId, expectedStateVersion }) => {
@@ -129,24 +174,40 @@ try {
     bookingId: resetAuthorized.data.preparedBooking.bookingId,
     expectedStateVersion: resetAuthorized.stateVersion,
   });
-  const cancellationConsistent = cancellationProbe.status === 'aborted'
-    ? !cancellationProbe.confirmed
-    : cancellationProbe.status === 'returned' && cancellationProbe.ok === true && cancellationProbe.confirmed;
-  if (!cancellationConsistent) {
-    throw new Error(`Native cancellation produced an ambiguous commit: ${JSON.stringify(cancellationProbe)}`);
+  const postCancellationCase = await execute('get_case_summary', {});
+  let cancellationReceiptPresent = false;
+  if (cancellationProbe.confirmed) {
+    await page.waitForFunction(async () => (await document.modelContext.getTools()).some((tool) => tool.name === 'get_action_receipt'));
+    const receipt = await execute('get_action_receipt', {});
+    cancellationReceiptPresent = receipt.ok === true && Boolean(receipt.data?.receipt?.id);
+  }
+  const postCancellationTools = await getToolNames();
+  const cancellationReconciled = cancellationProbe.status === 'aborted'
+    ? cancellationProbe.confirmed
+      ? postCancellationCase.data.workflowStatus === 'BOOKED' && cancellationReceiptPresent
+      : postCancellationCase.data.workflowStatus === 'APPROVED' && postCancellationTools.includes('commit_booking')
+    : cancellationProbe.status === 'returned' && cancellationProbe.ok === true
+      && cancellationProbe.confirmed && postCancellationCase.data.workflowStatus === 'BOOKED' && cancellationReceiptPresent;
+  if (!cancellationReconciled) {
+    throw new Error(`Native cancellation could not be reconciled: ${JSON.stringify({ cancellationProbe, postCancellationCase, cancellationReceiptPresent })}`);
   }
 
   process.stdout.write(`${JSON.stringify({
     browser: await browser.version(),
     api,
     initialToolCount: initialTools.length,
+    prepareBeforeSelection,
+    prepareAfterSelection,
     commitBeforeAuthorization: false,
     commitAfterAuthorization: true,
     commitAfterUse: false,
     receiptAfterUse: true,
     bookingHandleFromStructuredOutput: bookingId === prepared.data.bookingId,
-    consequentialCancellationConsistent: cancellationConsistent,
+    preAbortedWriteUnchanged,
+    consequentialCancellationReconciled: cancellationReconciled,
     cancellationOutcome: cancellationProbe.status,
+    cancellationDisposition: cancellationProbe.confirmed ? 'committed_then_reconciled' : 'cancelled_before_commit',
+    cancellationReceiptPresent,
     secondBookingHandleFromStructuredOutput: resetAuthorized.data.preparedBooking.bookingId === resetPrepared.data.bookingId,
   }, null, 2)}\n`);
 } finally {

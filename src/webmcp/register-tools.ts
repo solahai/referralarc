@@ -209,8 +209,10 @@ export class WebMCPRegistry {
           this.registrations.set(definition.name, controller);
           this.recordEvent(definition.name, 'added', 'Shared page state permits this capability.');
         } catch (error) {
+          const expectedRemoval = controller.signal.aborted || this.stopped || !definition.available(this.engine.getState());
           this.pendingRegistrations.delete(definition.name);
           controller.abort();
+          if (expectedRemoval) continue;
           this.recordEvent(definition.name, 'failed', error instanceof Error ? error.message : 'Native registration failed.');
         }
       }

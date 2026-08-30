@@ -124,7 +124,8 @@ export function nextTools(state: CareState): ToolName[] {
   ];
   const receiptTools: ToolName[] = state.receipts.length ? ['get_action_receipt'] : [];
   if (state.appointment) return [...readTools, ...receiptTools];
-  const reversibleTools: ToolName[] = ['save_plan_option', 'draft_intake', 'prepare_booking'];
+  const reversibleTools: ToolName[] = ['save_plan_option', 'draft_intake'];
+  if (state.selectedLocationId) reversibleTools.push('prepare_booking');
   return hasActiveApproval(state)
     ? [...readTools, ...receiptTools, ...reversibleTools, 'commit_booking']
     : [...readTools, ...receiptTools, ...reversibleTools];
@@ -460,6 +461,21 @@ export class CareEngine {
     }), 'human');
   }
 
+  editBooking(bookingId: string, expectedStateVersion: number): ResultEnvelope {
+    if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
+    if (!this.state.preparedBooking) return this.error('NO_DRAFT', 'There is no prepared booking to edit.');
+    if (this.state.preparedBooking.id !== bookingId) {
+      return this.error('REVIEW_CHANGED', 'The prepared booking changed after it was shown. Review the current draft before editing.');
+    }
+    const stale = this.requireVersion(expectedStateVersion);
+    if (stale) return stale;
+    return this.mutate('edit_booking', ['preparedBooking', 'approval', 'status'], () => {
+      this.state.preparedBooking = null;
+      this.state.approval = null;
+      this.state.status = this.state.intakeDraft ? 'INTAKE_DRAFTED' : 'OPTION_SELECTED';
+    }, 'The prepared booking was reopened for editing. The saved option and intake were preserved; no appointment was confirmed.', undefined, 'human');
+  }
+
   rejectBooking(bookingId: string, expectedStateVersion: number): ResultEnvelope {
     if (this.state.appointment) return this.error('CASE_COMPLETE', 'The fictional appointment is already confirmed.');
     if (!this.state.preparedBooking) return this.error('NO_DRAFT', 'There is no prepared booking to reject.');
@@ -472,7 +488,7 @@ export class CareEngine {
       this.state.preparedBooking = null;
       this.state.approval = null;
       this.state.status = this.state.intakeDraft ? 'INTAKE_DRAFTED' : 'OPTION_SELECTED';
-    }, 'The prepared booking was rejected and no appointment was confirmed.', undefined, 'human');
+    }, 'The prepared booking was rejected. The saved option and intake were preserved; no appointment was confirmed.', undefined, 'human');
   }
 
   revokeApproval(approvalId: string, bookingId: string, expectedStateVersion: number): ResultEnvelope {

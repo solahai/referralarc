@@ -13,7 +13,7 @@ ReferralArc’s differentiated contribution is capability-lifetime consent: visi
 | Ambiguous real-world ownership | The clinician-issued MRI order exists before ReferralArc begins; the product handles only the downstream administrative handoff. |
 | Unclear Docsplain fit | Docsplain is positioned as a possible document-understanding layer and ReferralArc as the person-reviewed action layer; no integration is falsely claimed. |
 | Crowded category | Submission copy narrows differentiation to an exact, expiring authorization visibly changing a native browser capability surface. |
-| One-turn tool rediscovery failure | All ten read/reversible-draft tools are registered when the page starts; only consequential commit and post-action receipt are dynamic. |
+| Tool rediscovery versus truthful availability | Nine read or early reversible-draft tools register at page start. `prepare_booking` appears only after selection; the golden proof waits for that fresh observation. Consequential commit and post-action receipt remain state-aware. |
 | Rail could lie about registration | The rail derives its list from successful native registrations, not desired state, and surfaces registration failures. |
 | Async registration leak | Pending controllers are tracked and aborted; availability and stopped state are rechecked after awaited registration. |
 | Stale reconciliation | Desired capabilities are recomputed from latest state before and after awaited registrations. |
@@ -34,7 +34,7 @@ ReferralArc’s differentiated contribution is capability-lifetime consent: visi
 | Output retry ambiguity | Representative read/write results are contract-tested under the 1,500-character budget; successful writes compact before any oversize failure response. |
 | Valid maximum comparison overflow | The four-provider response is compacted and covered by the same strict 1,500-character contract gate. |
 | Safe retries could erase progress | Repeating the current save, intake, preparation, or authorization is an idempotent no-op that preserves downstream work. |
-| Static eval drift | The 65-case corpus is CI-checked for count, IDs, required fields, categories, valid tool names, final display names, and banned legacy fixture names. It remains a contract corpus, not a measured agent pass rate. |
+| Eval drift and overclaiming | The 65-record corpus is CI-checked for the brief-mandated fields, exact A-T scenario coverage, valid/disjoint relevant and forbidden tools, current fixture names, and legacy-name removal. Twenty-nine representative records execute deterministic seeded state transitions; nine records are explicitly MODEL_OR_ENVIRONMENT_ONLY. No natural-language agent pass rate is claimed. |
 | Vulnerable release dependencies | Next.js, React RSC, vinext, Vite, and the Cloudflare toolchain were upgraded to compatible fixed releases; the full npm audit reports zero known vulnerabilities. |
 | Dialog keyboard gaps | Prompt drawer traps focus, closes on Escape, and restores focus to its trigger. |
 | Demo buried the differentiator | The 2:20 script cold-opens on the browser’s native Site-tools panel with `commit_booking` absent → visible exact authorization → native tool added. |
@@ -47,15 +47,15 @@ ReferralArc’s differentiated contribution is capability-lifetime consent: visi
 - Deploy the exact final working release at the submitted live URL.
 - Keep the exact final source, assets, functional instructions, and detectable MIT license public.
 - Record and publish the narrated YouTube demo with audio, strictly under three minutes, and use no unlicensed marks or music.
-- Add the required four-part description, video URL, team members, representative, and all final fields to Devpost; confirm eligibility, ownership, rights, and English-language materials.
+- Add the required four-part description, video URL, team members, representative, and all required fields to Devpost; confirm eligibility, ownership, rights, and English-language materials.
 - If the entrant has other submissions, confirm that each is unique and substantially different.
 - Keep the live site free and unrestricted through September 21, 2026 at 5:00 p.m. PT, and do not change the submitted materials after the submission period except as the Official Rules permit.
 
 ## Internal high-value evidence
 
-- The final local production candidate passed the Chrome 151 native smoke path—absence → authorization → registration → commit → receipt → removal—plus structured-handle and consequential-cancellation probes. Repeat and record it on the exact deployed SHA.
+- The exact final local production build passed the Chrome 151 native smoke path—absence → authorization → registration → commit → receipt → removal—plus structured handles, pre-abort safety, and late-cancellation reconciliation through structured state and receipt. Repeat and record it on the exact deployed SHA.
 - Run the 65 prompts repeatedly with a real agent, publish raw traces and selection/argument/sequence/stop-boundary pass rates, and compare against a DOM-only baseline. This would strengthen the entry but is not an Official Rules requirement.
-- Native screenshots were regenerated at 21:56Z and Chrome 151 evidence at 21:57:16Z from the final local candidate. Confirm or recapture them and the social card against the exact deployed SHA, and re-measure Lighthouse there.
+- Native screenshots and the social card were regenerated at 23:28Z and Chrome 151 evidence at 23:27:36Z from the exact final local build. Confirm them against the exact deployed SHA, and re-measure Lighthouse there.
 - Tag and freeze the exact submitted commit for reproducibility. Tagging is an internal control, not a required submission field.
 - Use the regenerated local-candidate authorization-state pair for review; ensure the final Devpost and README media match the exact deployed SHA.
 
