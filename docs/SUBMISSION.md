@@ -45,7 +45,7 @@ All names, providers, prices, appointments, identifiers, notes, and coverage det
 
 ## Submission fields to complete
 
-- Live URL: https://referralarc.docsplainai.chatgpt.site — replace the public baseline with the exact final release before submission
+- Live URL: https://referralarc.docsplainai.chatgpt.site — exact Sites version 9 is deployed, public without login, and verified through the full browser and native WebMCP paths
 - Public source repository: https://github.com/solahai/referralarc — exact final source, assets, and run instructions published under MIT
 - Public YouTube demo: add after recording
 - Team members: add before submission

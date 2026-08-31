@@ -2,11 +2,11 @@
 
 ReferralArc demonstrates **capability-lifetime consent**: a browser agent can prepare the administrative work after a clinician has ordered care, but no WebMCP tool can grant confirmation authority. In the visible demo flow, Maya reviews one exact appointment and creates a ten-minute, one-draft `commit_booking` lease. Before that review the capability is absent; after use it is removed.
 
-[Public baseline — final release pending](https://referralarc.docsplainai.chatgpt.site) · [Baseline demo — final release pending](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
+[Live site](https://referralarc.docsplainai.chatgpt.site) · [Golden demo](https://referralarc.docsplainai.chatgpt.site/demo) · [Public source](https://github.com/solahai/referralarc)
 
 ![ReferralArc exact authorization lease](docs/screenshots/capability-leased-1440x900.jpg)
 
-_Release-candidate capture from Chrome for Testing 151 using native WebMCP. The final video will independently show the browser's live Site tools._
+_Release capture from Chrome for Testing 151 using native WebMCP; it reflects the application source deployed as public Sites version 9. The final video will independently show the browser's live Site tools._
 
 The browser-visible app and its WebMCP tools share one deterministic domain engine. An agent can find eligible options, compare logistics, save a plan, draft intake, and prepare an appointment. The consequential commit tool does not exist until the exact draft is visibly authorized. Approval revocation, draft changes, automatic expiry, reset, and successful commit remove it again.
 
@@ -113,7 +113,7 @@ This calls native `getTools()` and `executeTool()`; it is separate from the dete
 
 ### Measured release audit
 
-Lighthouse 13 was run against a previous public production release with its default mobile throttling on August 25, 2026: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction was attributable to three deprecated APIs in the hosting platform’s injected `cdn-cgi` challenge script; the app-authored console-error audit passed. Two local runs of an earlier pre-deployment build measured Performance 75–78, Accessibility 100, Best Practices 100, SEO 100, LCP 4.2 s, CLS 0, and TBT 60–200 ms under simulated mobile throttling. These numbers are historical evidence, not measurements of the current working tree; re-measure the exact deployed release before submission.
+The exact public Sites version 9 was measured on August 31, 2026 with direct Chrome DevTools Protocol proxies, not Lighthouse scores. The 1440×900 landing run measured LCP 708 ms, CLS 0, and TTFB 238 ms. The 390×844 demo run under a slow-4G proxy and 4× CPU slowdown measured LCP 1.216 s, CLS 0, and TTFB 256 ms. Lighthouse 13 was also run against an earlier public release on August 25: Performance 99, Accessibility 100, Best Practices 81, SEO 100, LCP 1.5 s, CLS 0, and TBT 130 ms. The Best Practices deduction came from deprecated APIs in the hosting platform’s injected `cdn-cgi` challenge script; it is historical evidence, not a score for version 9.
 
 ## Project map
 
@@ -147,4 +147,4 @@ ReferralArc is a working project name selected after a quick exact-name web scan
 
 Released under the [MIT License](LICENSE).
 
-Bundled runtime attributions and exact package-supplied license texts are recorded in [Third-party notices](THIRD_PARTY_NOTICES.md); the matching [plain-text notice](public/third-party-notices.txt) is packaged for `/third-party-notices.txt` in the final deployment.
+Bundled runtime attributions and exact package-supplied license texts are recorded in [Third-party notices](THIRD_PARTY_NOTICES.md). The exact public release serves the matching [plain-text notice](https://referralarc.docsplainai.chatgpt.site/third-party-notices.txt); its deployed bytes were hash-verified against [the repository artifact](public/third-party-notices.txt).

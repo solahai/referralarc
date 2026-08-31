@@ -1,6 +1,6 @@
 # WebMCP Challenge compliance and judge audit
 
-Verified against the [OpenAI challenge page](https://openai.com/webmcp-challenge/), [Devpost requirements](https://webmcp.devpost.com/), and [binding Official Rules](https://webmcp.devpost.com/rules) on August 30, 2026. The Official Rules control if other challenge materials conflict.
+Verified against the [OpenAI challenge page](https://openai.com/webmcp-challenge/), [Devpost requirements](https://webmcp.devpost.com/), and [binding Official Rules](https://webmcp.devpost.com/rules) on August 31, 2026. The Official Rules control if other challenge materials conflict.
 
 Status key: **PASS** is present and repository-verifiable, **MANUAL** requires entrant action or a supported browser, and **WATCH** is a release obligation. This is an engineering audit, not a legal opinion or a predicted judge score.
 
@@ -14,8 +14,8 @@ Status key: **PASS** is present and repository-verifiable, **MANUAL** requires e
 | Multiple submissions must be unique and substantially different | **MANUAL** | The rules allow more than one submission; if the entrant has others, confirm each is unique and substantially different. |
 | New build or meaningful WebMCP extension during the challenge window | **PASS** | Repository history starts August 25, 2026; `docs/CHALLENGE-WORK.md` and dated commits distinguish the work. |
 | Web app powered by the required WebMCP API | **PASS** | Native `document.modelContext.registerTool`, typed tools, lifecycle signals, state-aware registration, and shared visual/domain state. |
-| Works consistently and matches description/video | **WATCH / MANUAL** | The current working tree has deterministic automated coverage; rerun every gate on the exact release and make the final video match it. |
-| Working live URL accessible in ChatGPT’s in-app browser or Chrome with WebMCP enabled | **WATCH — BLOCKER** | A public HTTPS baseline exists, but it still serves the previous fixture/release. Deploy and verify the exact final build before submission. |
+| Works consistently and matches description/video | **PASS / MANUAL** | The exact public release passed 18 Playwright flows and the native Chrome 151 lifecycle; record the final video from this same behavior. |
+| Working live URL accessible in ChatGPT’s in-app browser or Chrome with WebMCP enabled | **PASS** | Sites version 9 is public over HTTPS without login; the landing and demo routes return 200, the full public E2E suite passes, and native Chrome 151 invokes its WebMCP tools. |
 | Text explains WebMCP fit, UX improvement, newly possible behavior, and implementation | **PASS** | `docs/SUBMISSION.md` covers all four prompts; its shared-workspace bullets explicitly explain the UX improvement. |
 | Public source repository with all source, assets, and run instructions | **PASS** | The exact source, assets, and run instructions are published under the visible MIT license at [github.com/solahai/referralarc](https://github.com/solahai/referralarc). |
 | Open-source license visible at repository top/About | **PASS** | MIT license is committed and detected by GitHub. |
@@ -35,7 +35,7 @@ Status key: **PASS** is present and repository-verifiable, **MANUAL** requires e
 | Fits the future open web where people and agents collaborate | **PASS** | A visible shared workspace lets an agent prepare while Maya reviews the exact consequential action; no WebMCP tool grants authorization. |
 | Reasonable use of required WebMCP APIs | **PASS** | Twelve direct native tool registrations, not a wrapper around chat or DOM automation. |
 | Non-trivial implementation | **PASS** | Multi-tool composition, closed schemas, runtime invariants, dynamic capability lifetime, cancellation, expiry, receipts, and shared state. |
-| Coherent runnable product rather than technical proof-of-concept | **PASS / WATCH** | The working tree includes landing, complete agent and human flows, responsive workspace, fallback, reset, exports, audit history, errors, and tests; exact public deployment is pending. |
+| Coherent runnable product rather than technical proof-of-concept | **PASS** | The public release includes landing, complete agent and human flows, responsive workspace, fallback, reset, exports, audit history, errors, and verified tests. |
 
 ## Stage-two rubric audit
 
@@ -51,7 +51,7 @@ Strong evidence:
 - Registration lifetime and invocation cancellation use separate signals; the handler independently rechecks authorization immediately before commitment.
 - Tool names, descriptions, parameters, schemas, annotations, and maximum valid outputs are budget- and contract-tested.
 
-The exact final local production build passed Chrome 151 at 23:27:36Z. The smoke verifies the nine-tool initial surface, `prepare_booking` absent before selection and present afterward, commit absent before approval and present afterward, post-use removal, receipt availability, structured handles, pre-abort safety, and late-cancellation reconciliation through structured state and receipt. Repeat it on the exact deployed SHA before submission. A separate repeated natural-language-agent report would strengthen the evidence but is not an Official Rules requirement. Do not claim that every browser or agent product supports WebMCP.
+Exact public Sites version 9 passed Chrome 151 at 2026-08-31T01:15:15Z. The smoke verifies the nine-tool initial surface, `prepare_booking` absent before selection and present afterward, commit absent before approval and present afterward, post-use removal, receipt availability, structured handles, pre-abort safety, and late-cancellation reconciliation through structured state and receipt. A separate repeated natural-language-agent report would strengthen the evidence but is not an Official Rules requirement. Do not claim that every browser or agent product supports WebMCP.
 
 ### Execution
 
@@ -64,7 +64,7 @@ Strong evidence:
 - Alternative providers, prerequisites, eligible slots, excluded reasons, provenance, and visible state remain consistent.
 - Typecheck, lint, unit, contract, security, accessibility, build, and end-to-end gates are automated.
 
-Remaining delivery risk: the final local candidate has supported-browser verification and regenerated native screenshots, but the exact public deployment is still pending. Repeat the native check on that deployed SHA, confirm its media, complete final production checks, and retain a tagged commit as an internal reproducibility control.
+Remaining delivery risk is now outside the application build: record and time the native video, complete Devpost, confirm entrant attestations, and keep the verified public release unchanged and accessible through judging. A tagged commit remains a useful internal reproducibility control.
 
 ### Potential Impact
 
@@ -96,12 +96,12 @@ Remaining differentiation risk: referral scheduling is a crowded category. Every
 - The accessibility audit covers the full landmark structure rather than suppressing the `region` rule.
 - The mobile and no-WebMCP fallback explicitly show truthful native availability rather than simulated registration.
 - The framework and build toolchain were upgraded together until the full production-and-development dependency audit reported zero known vulnerabilities.
-- Chrome 151 testing exposed browser-boundary behavior that the in-page harness could not: it invoked the callback with one argument, and a caller can observe a late abort after a synchronous commit already landed. The current specification supplies a second invocation-options signal, and Chrome documentation says version 153 no longer breaks in-flight work on unregistration. The final local smoke proves pre-aborted writes stay unchanged and reconciles late consequential cancellation through structured state and receipt; idempotency protects retries.
+- Chrome 151 testing exposed browser-boundary behavior that the in-page harness could not: it invoked the callback with one argument, and a caller can observe a late abort after a synchronous commit already landed. The current specification supplies a second invocation-options signal, and Chrome documentation says version 153 no longer breaks in-flight work on unregistration. The exact public Sites version 9 smoke proves pre-aborted writes stay unchanged and reconciles late consequential cancellation through structured state and receipt; idempotency protects retries.
 
 ## Official submission blockers
 
-1. Deploy a working exact release at the submitted live URL and keep it free and unrestricted through September 21, 2026 at 5:00 p.m. PT.
-2. Keep this exact tagged source, its assets and functional instructions, and the visible MIT license public.
+1. Keep verified Sites version 9 free and unrestricted through September 21, 2026 at 5:00 p.m. PT.
+2. Keep the verified public source, its assets and functional instructions, and the visible MIT license available.
 3. Record a public YouTube video with audio from that functioning release, keep it strictly under three minutes, and avoid unlicensed marks or music.
 4. Submit the four required text explanations plus the live, repository, and video URLs and all representative/team fields in Devpost.
 5. Confirm eligibility, ownership, third-party rights, English-language materials, no prohibited Sponsor/Administrator financial or preferential support, and the appointed representative when applicable. If there are other submissions, confirm each is unique and substantially different.
@@ -109,9 +109,9 @@ Remaining differentiation risk: referral scheduling is a crowded category. Every
 
 ## Internal high-value evidence and controls
 
-1. Repeat the passing native smoke against the exact deployed SHA and capture that full capability lifecycle for the video.
+1. Capture the already verified public native lifecycle—absence, selection-gated preparation, exact authorization, commit, receipt, and removal—in the final video.
 2. The 65-record corpus has full schema and A-T category contracts, and 29 representative records execute deterministic engine/tool-validator transitions. Nine records are explicitly model/environment-only. Optionally run all 65 prompts repeatedly with a real agent and publish raw traces, model/version, trial count, and selection/argument/sequence/stop-boundary pass rates; deterministic CI evidence is not model performance.
-3. Native screenshots and evidence are current for the final local candidate; confirm or refresh them, the social card, and Lighthouse measurements against the exact deployed SHA.
+3. Native screenshots reflect the deployed application source, the public social card/favicon/notices match repository hashes, and the evidence JSON records the exact public URL. An additional Lighthouse run is optional.
 4. Tag and retain the exact submitted commit for reproducibility.
 
 ## Claims to avoid

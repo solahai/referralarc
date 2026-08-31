@@ -1,6 +1,6 @@
 {
-  "recordedAt": "2026-08-30T23:27:36Z",
-  "command": "CHROME_PATH=/path/to/chrome PREVIEW_URL=http://127.0.0.1:4187 npm run test:native",
+  "recordedAt": "2026-08-31T01:15:15Z",
+  "command": "CHROME_PATH=/path/to/chrome PREVIEW_URL=https://referralarc.docsplainai.chatgpt.site npm run test:native",
   "browser": "151.0.7922.34",
   "api": {
     "registerTool": "function",
@@ -22,5 +22,11 @@
   "cancellationReceiptPresent": true,
   "secondBookingHandleFromStructuredOutput": true,
   "evidenceSemantics": "A pre-aborted native write left state unchanged. The late-abort commit probe was reconciled through structured case state and its receipt; idempotency protects retries.",
-  "scope": "exact final local production build; repeat on exact deployed SHA before submission"
+  "deployment": {
+    "siteVersion": 9,
+    "sourceCommit": "c2a44827000781804e6cecf334a29f94be048177",
+    "deploymentId": "appgdep_6a94d523bb6c8191a22a196de423f238",
+    "url": "https://referralarc.docsplainai.chatgpt.site"
+  },
+  "scope": "exact public Sites version 9 deployed from source commit c2a44827000781804e6cecf334a29f94be048177"
 }

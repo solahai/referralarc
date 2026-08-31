@@ -20,7 +20,7 @@ This repository was created from a clean Sites scaffold on August 25, 2026, afte
 
 ## Evidence
 
-The repository history begins with the completed challenge-window implementation. Dated commits and source history provide the strongest evidence. Native Chrome screenshots and the social card were regenerated from the exact final local production build on August 30 at 23:28Z, and the current native JSON records its passing Chrome 151 smoke at 23:27:36Z. They are local evidence; repeat the smoke and confirm the media against the exact deployed SHA before submission. After the submission period ends, the submitted materials must not be changed except as the Official Rules expressly permit.
+The repository history begins with the completed challenge-window implementation. Dated commits and source history provide the strongest evidence. Native Chrome screenshots were regenerated from the deployed application source on August 30 at 23:28Z. On August 31, exact public Sites version 9 passed the native Chrome 151 smoke at 01:15:15Z; the public social card, favicon, and third-party notice were hash-verified against repository artifacts. After the submission period ends, the submitted materials must not be changed except as the Official Rules expressly permit.
 
 ## Prize-hardening completed on August 26, 2026
 
@@ -52,4 +52,12 @@ The repository history begins with the completed challenge-window implementation
 - Updated the clearly synthetic FHIR-shaped export with UUID URNs, `ServiceRequest` linkage, a valid start/end pair, and truthful proposed-participant states
 - Expanded the suite to 90 unit/contract/security/eval tests and 18 end-to-end tests, including 29 executable deterministic eval scenarios, clipboard failure, keyboard tabs, full-flow console/runtime-error checks, export semantics, reset replay, navigation persistence, mobile workspace access, current-registration health, exact-bound approve/edit/reject decisions, stale visible decisions, and future-date coverage
 - Reconciled the 65-record corpus to the brief-mandated fields and A-T categories, separated deterministic evidence from model/environment-only trials, and aligned documentation, architecture, submission claims, and Official Rules wording with the current implementation
-- Captured exact-final local native screenshots and passing Chrome 151 lifecycle, structured-handle, pre-abort safety, and late-cancellation reconciliation evidence while keeping the deployed-SHA rerun, repeated real-agent evaluation, Lighthouse remeasurement, and commit tagging correctly classified as internal controls rather than hackathon requirements
+- Captured exact-source native screenshots and passing Chrome 151 lifecycle, structured-handle, pre-abort safety, and late-cancellation reconciliation evidence while keeping repeated real-agent evaluation, Lighthouse, and commit tagging correctly classified as internal controls rather than hackathon requirements
+
+## Public release verified on August 31, 2026
+
+- Deployed Sites version 9 from application source commit `c2a44827000781804e6cecf334a29f94be048177`
+- Verified public landing, deep-linked demo, refresh, social image, favicon, and third-party notice over HTTPS without login
+- Ran all 18 Playwright flows against the public origin, including golden, fallback, accessibility, responsive, registration-failure, export, and navigation cases
+- Ran native Chrome 151 against the public origin and verified the nine-tool initial surface, dynamic preparation, exact approval lease, single commit, receipt, removal, structured handles, and cancellation reconciliation
+- Inspected production headers, origin isolation, public asset hashes, client chunks, and direct CDP performance proxies

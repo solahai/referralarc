@@ -87,6 +87,13 @@ test('completes the golden agent + human interleaving flow', async ({ page }) =>
   await expect.poll(() => page.evaluate(() => window.__webmcpTools?.has('commit_booking'))).toBe(false);
   await expect(page.locator('.commit-node')).toContainText('Consumed + removed');
   await expect(page.locator('.safe-node strong')).toHaveText('Read + receipt');
+  await page.getByRole('tab', { name: /Activity/ }).click();
+  const latestActivity = page.locator('.activity-item').first();
+  await expect(latestActivity).toContainText('Confirm approved booking');
+  await expect(latestActivity.locator('small')).toHaveText(/commit · .*\d{1,2}:\d{2}.* · \d+ ms/);
+  await expect(latestActivity.locator('code')).toContainText(/commit_booking · rcpt_/);
+  await page.getByRole('tab', { name: /Capabilities/ }).click();
+  await expect(page.locator('.registration-event')).toContainText(/at .*\d{1,2}:\d{2}:\d{2}/);
   expect(errors).toEqual([]);
 });
 
@@ -178,6 +185,9 @@ test('client navigation preserves the session workflow until explicit reset', as
   await expect(cleanPage.locator('main[data-hydrated="true"]')).toBeVisible();
   await expect(cleanPage.getByRole('button', { name: 'Save to care plan' })).toBeEnabled();
   await expect(cleanPage.getByRole('button', { name: 'Draft ready · v1' })).toHaveCount(0);
+  await cleanPage.reload();
+  await expect(cleanPage.locator('main[data-hydrated="true"]')).toBeVisible();
+  await expect(cleanPage.getByRole('button', { name: 'Save to care plan' })).toBeEnabled();
   await cleanPage.close();
 
   await page.getByRole('button', { name: 'Reset demo' }).click();
@@ -297,6 +307,9 @@ test('landing and demo have no serious accessibility violations', async ({ page 
     const results = await new AxeBuilder({ page }).analyze();
     const serious = results.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''));
     expect(serious).toEqual([]);
+    for (const role of ['button', 'link'] as const) {
+      for (const control of await page.getByRole(role).all()) await expect(control).not.toHaveAccessibleName('');
+    }
   }
 });
 
@@ -332,6 +345,7 @@ test('approved and receipt states without WebMCP have no serious accessibility v
   await page.getByRole('button', { name: 'Save to care plan' }).click();
   await page.getByRole('button', { name: 'Draft from profile' }).click();
   await page.getByRole('button', { name: 'Prepare booking' }).click();
+  await expect(page.getByRole('combobox', { name: 'Appointment slot' })).toBeVisible();
   let results = await new AxeBuilder({ page }).analyze();
   expect(results.violations.filter((item) => ['serious', 'critical'].includes(item.impact ?? ''))).toEqual([]);
   await page.getByRole('button', { name: 'Approve this exact appointment' }).click();

@@ -1,6 +1,6 @@
 # Prize-readiness audit
 
-Checked against the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/), [Devpost overview](https://webmcp.devpost.com/), and [binding rules](https://webmcp.devpost.com/rules) on August 30, 2026.
+Checked against the [OpenAI WebMCP Challenge](https://openai.com/webmcp-challenge/), [Devpost overview](https://webmcp.devpost.com/), and [binding rules](https://webmcp.devpost.com/rules) on August 31, 2026.
 
 ## Honest verdict
 
@@ -44,7 +44,7 @@ ReferralArc’s differentiated contribution is capability-lifetime consent: visi
 
 ## Official submission blockers
 
-- Deploy the exact final working release at the submitted live URL.
+- Keep verified Sites version 9 free and unrestricted at the submitted live URL through judging.
 - Keep the exact final source, assets, functional instructions, and detectable MIT license public.
 - Record and publish the narrated YouTube demo with audio, strictly under three minutes, and use no unlicensed marks or music.
 - Add the required four-part description, video URL, team members, representative, and all required fields to Devpost; confirm eligibility, ownership, rights, English-language materials, and no prohibited Sponsor/Administrator financial or preferential support.
@@ -53,15 +53,15 @@ ReferralArc’s differentiated contribution is capability-lifetime consent: visi
 
 ## Internal high-value evidence
 
-- The exact final local production build passed the Chrome 151 native smoke path—absence → authorization → registration → commit → receipt → removal—plus structured handles, pre-abort safety, and late-cancellation reconciliation through structured state and receipt. Repeat and record it on the exact deployed SHA.
+- Exact public Sites version 9 passed the Chrome 151 native smoke path—absence → selection-gated preparation → authorization → registration → commit → receipt → removal—plus structured handles, pre-abort safety, and late-cancellation reconciliation through structured state and receipt at 2026-08-31T01:15:15Z.
 - Run the 65 prompts repeatedly with a real agent, publish raw traces and selection/argument/sequence/stop-boundary pass rates, and compare against a DOM-only baseline. This would strengthen the entry but is not an Official Rules requirement.
-- Native screenshots and the social card were regenerated at 23:28Z and Chrome 151 evidence at 23:27:36Z from the exact final local build. Confirm them against the exact deployed SHA, and re-measure Lighthouse there.
+- Native screenshots were regenerated from the deployed application source; the public social card, favicon, and notice match repository hashes. Exact-public CDP performance proxies are recorded in the README; Lighthouse remains optional evidence.
 - Tag and freeze the exact submitted commit for reproducibility. Tagging is an internal control, not a required submission field.
-- Use the regenerated local-candidate authorization-state pair for review; ensure the final Devpost and README media match the exact deployed SHA.
+- Use the regenerated authorization-state pair for Devpost review; the README media matches the deployed application behavior.
 
 ## High-value stretch work
 
-The current working tree is a coherent synthetic product subject to final release gates. These additions would raise ambition but are not safe to fake before the deadline:
+The public release is a coherent synthetic product. These additions would raise ambition but are not safe to fake before the deadline:
 
 - A server-authoritative sandbox booking adapter with durable authorization, idempotency, slot revalidation, and reconciliation.
 - A multi-order coordinator queue or missing-document handoff that proves material time savings beyond a single case.
